@@ -26,6 +26,10 @@ import { ScanAndSearch } from './pages/customs/ScanAndSearch';
 import { SingleSourceOfTruth } from './pages/customs/SingleSourceOfTruth';
 import { GreenChannelRelease } from './pages/customs/GreenChannelRelease';
 
+// Go Backend Quick Routes (Port 4001)
+import { QuickRegister } from './pages/QuickRegister';
+import { PublicTracking } from './pages/PublicTracking';
+
 import { SeniorModeProvider } from './context/SeniorModeContext';
 
 export default function App() {
@@ -36,6 +40,11 @@ export default function App() {
           <Route path="/" element={<RootLayout />}>
             {/* 0. Central Portal Hub & Launchpad */}
             <Route index element={<PortalHub />} />
+
+            {/* Go Backend (Port 4001) Dedicated Routes */}
+            <Route path="register" element={<QuickRegister />} />
+            <Route path="track" element={<PublicTracking />} />
+            <Route path="track/:batch_id" element={<PublicTracking />} />
 
             {/* 1. Portal 1: Farmer & Middleman App (Mobile PWA Frame) */}
             <Route path="farmer" element={<FarmerLayout />}>

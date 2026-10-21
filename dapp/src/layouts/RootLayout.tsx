@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Smartphone, Factory, ShieldCheck, Home, Shield } from 'lucide-react';
+import { Smartphone, Factory, ShieldCheck, Home, Shield, QrCode } from 'lucide-react';
 
 export const RootLayout: React.FC = () => {
   const location = useLocation();
 
   const navItems = [
     { path: '/', label: 'ສູນລວມລະບົບ', sub: 'National Hub', icon: Home },
+    { path: '/register', label: 'Go API ພອດ 4001', sub: 'Register & QR', icon: QrCode, matchPrefix: '/register' },
     { path: '/farmer/register', label: '1. ແອັບຊາວກະສິກອນ', sub: 'Farmer Portal', icon: Smartphone, matchPrefix: '/farmer' },
     { path: '/factory/batches', label: '2. ລະບົບໂຮງງານ', sub: 'Factory & Export', icon: Factory, matchPrefix: '/factory' },
     { path: '/customs/trace/LA-COF-2026-001', label: '3. ກວດສອບດ່ານສຸລະກາກອນ', sub: 'Customs Verification', icon: ShieldCheck, matchPrefix: '/customs' },
