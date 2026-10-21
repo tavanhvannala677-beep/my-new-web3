@@ -5,6 +5,15 @@
 
 ---
 
+![LaoTrace Data Flow Diagram](docs/lao_trace_data_flow.jpg)
+
+## 📡 Go Backend API (Port 4001) Integration
+* **Base URL:** `http://localhost:4001/api/v1`
+* **Register Batch Endpoint:** `POST /batch/register` (ສະແດງຜົນທີ່ `/#/register` ພ້ອມສ້າງ QR Code ທັນທີ)
+* **Tracking & AI Logs Endpoint:** `GET /batch/:id` (ສະແດງຜົນທີ່ `/#/track/:batch_id` ແຍກສະຖານະ EUDR ແລະ ແປພາສາຈີນ GACC)
+
+---
+
 ## 🌟 3 ລະບົບຫຼັກທີ່ເຊື່ອມໂຍງກັນ (3 Core Portals)
 
 ### 1. 👨‍🌾 ລະບົບຊາວກະສິກອນ & ພໍ່ຄ້າຄົນກາງ (Farmer & Middleman App)
