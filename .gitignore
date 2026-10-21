@@ -1,0 +1,19 @@
+# Node & dependencies
+node_modules/
+dist/
+*.log
+*.tsbuildinfo
+package-lock.json
+
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Environment / local configs
+.env.local
+.env.*.local
+
+# Temp binaries
+cloudflared*
+

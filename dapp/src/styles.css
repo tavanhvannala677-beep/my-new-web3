@@ -1,0 +1,115 @@
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  --bg-primary: #edf2e7;
+  --bg-secondary: #e2ebd9;
+  --bg-card: #ffffff;
+  --bg-card-sage: #e1e9d8;
+  --forest-dark: #153826;
+  --forest-hover: #0e281b;
+  --forest-light: #eaf1e5;
+  --accent-emerald: #153826;
+  --accent-sky: #1e4a38;
+  --accent-amber: #b45309;
+  --text-main: #142a1d;
+  --text-muted: #4d6052;
+  --text-light: #708375;
+  --border-subtle: #d5dfce;
+  --border-strong: #c2cfba;
+  --radius-pill: 8px;
+  --radius-card: 8px;
+  --radius-sm: 4px;
+  --font-family-base: 'Noto Sans Lao Looped', 'Phetsarath', 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body, button, input, select, textarea, optgroup, table, th, td, h1, h2, h3, h4, h5, h6, p, span, div, a, label, strong, b, em {
+  font-family: var(--font-family-base);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: var(--font-family-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+/* Accessible focus ring for touch & keyboard accessibility */
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid #153826;
+  outline-offset: 2px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Animations */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Leaflet map custom reset for crisp light theme */
+.leaflet-container {
+  font-family: inherit;
+  background: #e2e8f0 !important;
+}
+
+.leaflet-bar a {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-radius: 4px !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: #f8fafc !important;
+}
