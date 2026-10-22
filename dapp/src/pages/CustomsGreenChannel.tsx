@@ -15,7 +15,11 @@ import {
   AlertTriangle,
   QrCode,
   Sparkles,
-  Wallet as WalletIcon
+  Wallet as WalletIcon,
+  FileText,
+  UploadCloud,
+  Check,
+  RefreshCw
 } from 'lucide-react';
 import { BrowserProvider, getAddress } from 'ethers';
 import { fetchBatchFromBackend, runCustomsClearance, parseEvidenceHash, BatchResponse } from '../services/backendApi';
@@ -23,7 +27,10 @@ import {
   addVerificationLogOnChain,
   getBatchFromChain,
   getBatchLogsFromChain,
-  getLabChainReadOnlyProvider
+  getLabChainReadOnlyProvider,
+  callPythonCustomsClearance,
+  CustomsClearanceAiResponse,
+  MOCK_ENGLISH_OCR_TRANSLATION
 } from '../services/web3Traceability';
 import {
   LAO_TRACEABILITY_ADDRESS,
@@ -46,7 +53,19 @@ export function CustomsGreenChannel() {
   const [batchData, setBatchData] = useState<BatchResponse | null>(null);
   const [onChainBatch, setOnChainBatch] = useState<any | null>(null);
 
-  // Step 2: Approval State
+  // Step 2: Document OCR State (POST /api/customs-clearance)
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docFileName, setDocFileName] = useState<string>('e-phyto-phytosanitary-cert.pdf');
+  const [isScanningOcr, setIsScanningOcr] = useState<boolean>(false);
+  const [ocrResponse, setOcrResponse] = useState<CustomsClearanceAiResponse | null>({
+    status: 'PASS',
+    evidence_hash: 'QmCustomsPhytoOcrVerifiedBotenMohan8812_BATCHLAO001',
+    translatedText: MOCK_ENGLISH_OCR_TRANSLATION,
+    isSimulatedFallback: false
+  });
+  const [ocrStatusMessage, setOcrStatusMessage] = useState<string>('');
+
+  // Step 3: Approval State
   const [isApproving, setIsApproving] = useState<boolean>(false);
   const [approvalResult, setApprovalResult] = useState<any>(null);
   const [onChainTxHash, setOnChainTxHash] = useState<string | null>(null);
@@ -158,13 +177,41 @@ export function CustomsGreenChannel() {
     }, 400);
   };
 
-  // Step 2: Approve Customs Clearance (addVerificationLog on-chain)
+  // Step 2: Run AI OCR on Document (POST http://localhost:5000/api/customs-clearance)
+  const handleRunOcrScan = async () => {
+    const targetBatchId = batchData?.data.batch.batch_id || inputBatchId;
+    if (!targetBatchId) return;
+
+    setIsScanningOcr(true);
+    setOcrStatusMessage('🧠 ກຳລັງສົ່ງເອກະສານໄປຍັງ Python AI (POST http://localhost:5000/api/customs-clearance)...');
+
+    try {
+      const res = await callPythonCustomsClearance(targetBatchId, docFile || undefined);
+      setOcrResponse(res);
+      setOcrStatusMessage(
+        res.isSimulatedFallback
+          ? '⚡ ສະແກນ AI OCR ສຳເລັດ (Mock Pitching Demo Mode): ດຶງຂໍ້ຄວາມແປພາສາອັງກິດ & Evidence Hash ສຳເລັດ!'
+          : '✅ ສະແກນ AI OCR ສຳເລັດ: Python AI ຕອບກັບ status: PASS ພ້ອມ Evidence Hash'
+      );
+    } catch (err: any) {
+      console.error('OCR scan failed:', err);
+      setOcrStatusMessage('❌ ເກີດຂໍ້ຜິດພາດໃນການສະແກນເອກະສານ: ' + err.message);
+    } finally {
+      setIsScanningOcr(false);
+    }
+  };
+
+  // Step 3: Approve Customs Clearance (addVerificationLog on-chain)
   const handleApproveClearance = async () => {
     const targetBatchId = batchData?.data.batch.batch_id || inputBatchId;
     if (!targetBatchId) return;
 
     setIsApproving(true);
     let txHash = '';
+
+    const evidenceHashToSubmit =
+      ocrResponse?.evidence_hash ||
+      `QmCustomsPhytoOcrVerifiedBotenMohan8812_${targetBatchId.replace(/[^a-zA-Z0-9]/g, '')}`;
 
     try {
       // On-Chain verification log call to Smart Contract
@@ -175,7 +222,7 @@ export function CustomsGreenChannel() {
         const onChainRes = await addVerificationLogOnChain(signer, {
           batchId: targetBatchId,
           action: 'GACC_CLEARED_GREEN_CHANNEL',
-          evidenceHash: 'Customs Officer Verified #8812 - Mohan/Boten Border Control',
+          evidenceHash: evidenceHashToSubmit,
           newStatus: BatchStatus.ExportCleared // 3
         });
 
@@ -187,7 +234,7 @@ export function CustomsGreenChannel() {
       const payload = {
         batch_id: targetBatchId,
         action: 'GACC_CLEARED_GREEN_CHANNEL',
-        evidence_hash: 'Customs Officer Verified #8812 - Mohan/Boten Border Control'
+        evidence_hash: evidenceHashToSubmit
       };
 
       await runCustomsClearance(payload);
@@ -197,6 +244,7 @@ export function CustomsGreenChannel() {
         officer: 'GACC Mohan Officer #8812 & Boten Customs Node',
         trainNo: 'Lao-China Railway Cargo LX-802',
         sealId: 'TGHU-992140-7',
+        evidenceHash: evidenceHashToSubmit,
         txHash
       });
 
@@ -562,13 +610,13 @@ export function CustomsGreenChannel() {
               {/* EUDR Satellite Proof */}
               <div style={{
                 background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: '6px',
+                border: '1.5px solid #bbf7d0',
+                borderRadius: '8px',
                 padding: '14px'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                   <Satellite size={16} color="#15803d" />
-                  <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#166534' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#166534' }}>
                     1. ຫຼັກຖານດາວທຽມ EUDR (Sentinel-2)
                   </span>
                 </div>
@@ -583,7 +631,7 @@ export function CustomsGreenChannel() {
                   </div>
                 ) : (
                   <div style={{ fontSize: '11.5px', color: '#15803d' }}>
-                    ✓ ຜ່ານການກວດສອບພື້ນທີ່ບໍ່ຕັດໄມ້ທຳລາຍປ່າແລ້ວ
+                    ✓ ຜ່ານການກວດສອບພື້ນທີ່ບໍ່ຕັດໄມ້ທຳລາຍປ່າແລ້ວ (Zero Deforestation Verified)
                   </div>
                 )}
               </div>
@@ -591,13 +639,13 @@ export function CustomsGreenChannel() {
               {/* Chinese Translation Proof */}
               <div style={{
                 background: '#fefce8',
-                border: '1px solid #fef08a',
-                borderRadius: '6px',
+                border: '1.5px solid #fef08a',
+                borderRadius: '8px',
                 padding: '14px'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                   <Languages size={16} color="#854d0e" />
-                  <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#854d0e' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#854d0e' }}>
                     2. ຂໍ້ມູນແປພາສາຈີນ (GACC e-Phyto)
                   </span>
                 </div>
@@ -618,7 +666,251 @@ export function CustomsGreenChannel() {
               </div>
             </div>
 
-            {/* STEP 2: Big Green Approve Button */}
+            {/* STEP 2: e-Phyto Document Upload & OCR AI Verification Box */}
+            <div style={{
+              background: '#f8fafc',
+              border: '1.5px solid #cbd5e1',
+              borderRadius: '8px',
+              padding: '18px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: '#153826',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 900
+                  }}>2</span>
+                  <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    Step 2: ອັບໂຫຼດເອກະສານກວດພືດ e-Phyto & ສະແກນ AI OCR (POST /api/customs-clearance)
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDocFileName('LAO-DOA-PHYTO-2026-8812.pdf');
+                    handleRunOcrScan();
+                  }}
+                  style={{
+                    background: '#e0f2fe',
+                    color: '#0369a1',
+                    border: '1px solid #bae6fd',
+                    borderRadius: '5px',
+                    padding: '4px 10px',
+                    fontSize: '11.5px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Sparkles size={13} />
+                  <span>📄 ໃຊ້ຕົວຢ່າງ e-Phyto (One-Click Demo Sample)</span>
+                </button>
+              </div>
+
+              {/* Upload Input & Scan Trigger */}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '14px' }}>
+                <label style={{
+                  flex: 1,
+                  minWidth: '240px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 12px',
+                  background: '#ffffff',
+                  border: '1.5px dashed #94a3b8',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12.5px',
+                  color: '#334155'
+                }}>
+                  <UploadCloud size={18} color="#0284c7" />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                    {docFile ? docFile.name : docFileName || 'ເລືອກໄຟລ໌ໃບກວດພືດ e-Phyto (PDF/JPG)...'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setDocFile(e.target.files[0]);
+                        setDocFileName(e.target.files[0].name);
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={handleRunOcrScan}
+                  disabled={isScanningOcr}
+                  style={{
+                    padding: '10px 18px',
+                    background: '#0284c7',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    cursor: isScanningOcr ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)'
+                  }}
+                >
+                  {isScanningOcr ? (
+                    <>
+                      <RefreshCw size={15} className="animate-spin" />
+                      <span>ກຳລັງສະແກນ AI OCR...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileCheck size={16} />
+                      <span>🧠 ສະແກນ AI OCR ເອກະສານ</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {ocrStatusMessage && (
+                <div style={{
+                  padding: '8px 12px',
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: '#166534',
+                  marginBottom: '14px',
+                  fontWeight: 600
+                }}>
+                  {ocrStatusMessage}
+                </div>
+              )}
+
+              {/* ⚡ PROMINENT ENGLISH TRANSLATION CARD (PITCHING DEMO MOCK TEXT) */}
+              {ocrResponse && (
+                <div style={{
+                  background: '#ffffff',
+                  border: '2px solid #0284c7',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.08)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #e2e8f0', paddingBottom: '10px', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <FileText size={18} color="#0284c7" />
+                      <div>
+                        <div style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a' }}>
+                          🏛️ {ocrResponse.translatedText.certificate_title}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          Official English Translation for EU & GACC Green Channel Customs Authority
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      border: '1px solid #86efac',
+                      borderRadius: '4px',
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      fontWeight: 800
+                    }}>
+                      <Check size={13} />
+                      <span>AI OCR: PASS</span>
+                    </div>
+                  </div>
+
+                  {/* Certificate Fields Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '10px', fontSize: '12px', marginBottom: '12px' }}>
+                    <div style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block' }}>Certificate No:</span>
+                      <strong style={{ color: '#0f172a' }}>{ocrResponse.translatedText.certificate_no}</strong>
+                    </div>
+                    <div style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block' }}>Declared Commodity:</span>
+                      <strong style={{ color: '#0f172a' }}>{ocrResponse.translatedText.declared_product}</strong>
+                    </div>
+                    <div style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block' }}>Botanical Name:</span>
+                      <strong style={{ color: '#0f172a', fontStyle: 'italic' }}>{ocrResponse.translatedText.botanical_name}</strong>
+                    </div>
+                    <div style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ color: '#64748b', fontSize: '10.5px', display: 'block' }}>Consignment Net Weight:</span>
+                      <strong style={{ color: '#15803d' }}>{ocrResponse.translatedText.consignment_weight}</strong>
+                    </div>
+                  </div>
+
+                  {/* EUDR & Quarantine Declarations */}
+                  <div style={{
+                    background: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '6px',
+                    padding: '10px 12px',
+                    marginBottom: '10px',
+                    fontSize: '11.5px',
+                    color: '#166534',
+                    lineHeight: 1.45
+                  }}>
+                    <strong style={{ display: 'block', marginBottom: '3px' }}>🌿 EUDR Compliance:</strong>
+                    {ocrResponse.translatedText.eudr_compliance_statement}
+                  </div>
+
+                  <div style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    padding: '10px 12px',
+                    fontSize: '11.5px',
+                    color: '#334155',
+                    lineHeight: 1.45,
+                    marginBottom: '10px'
+                  }}>
+                    <strong style={{ display: 'block', marginBottom: '3px', color: '#0f172a' }}>🔬 Official Quarantine Declaration:</strong>
+                    {ocrResponse.translatedText.phytosanitary_declaration}
+                  </div>
+
+                  {/* Stamp & Hash footer */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: '#f1f5f9',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    color: '#475569',
+                    flexWrap: 'wrap',
+                    gap: '6px'
+                  }}>
+                    <div>
+                      <strong>Digital Seal:</strong> {ocrResponse.translatedText.digital_stamp}
+                    </div>
+                    <div style={{ fontFamily: 'monospace', color: '#0284c7' }}>
+                      IPFS Evidence: {ocrResponse.evidence_hash.substring(0, 18)}...
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* STEP 3: On-Chain Approval Button (addVerificationLog on Smart Contract) */}
             <div style={{
               borderTop: '1.5px solid #edf2e7',
               paddingTop: '20px',
@@ -627,8 +919,22 @@ export function CustomsGreenChannel() {
               alignItems: 'center',
               gap: '12px'
             }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#4d6052' }}>
-                Step 2: ກົດປຸ່ມດ້ານລຸ່ມເພື່ອບັນທຶກ <code>addVerificationLog</code> ບົນ Smart Contract ແລະ ປ່ອຍຜ່ານດ່ານ
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  background: '#153826',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  fontWeight: 900
+                }}>3</span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#142a1d' }}>
+                  Step 3: ບັນທຶກ <code>addVerificationLog</code> ບົນ Smart Contract (0xee891fb89CaD3D643a029fF6b4BD0addc6E4d8Cc) ປ່ອຍຜ່ານດ່ານ
+                </span>
               </div>
 
               <button
@@ -637,7 +943,7 @@ export function CustomsGreenChannel() {
                 disabled={isApproving || isAlreadyCleared}
                 style={{
                   width: '100%',
-                  maxWidth: '480px',
+                  maxWidth: '520px',
                   padding: '15px 24px',
                   background: isAlreadyCleared ? '#15803d' : '#16a34a',
                   color: '#ffffff',
