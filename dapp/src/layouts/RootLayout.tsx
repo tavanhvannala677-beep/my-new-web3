@@ -1,16 +1,17 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Smartphone, Factory, ShieldCheck, Home, Shield, QrCode } from 'lucide-react';
+import { Smartphone, Factory, ShieldCheck, Home, Shield, QrCode, Sparkles, Layers, Search } from 'lucide-react';
 
 export const RootLayout: React.FC = () => {
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: 'ສູນລວມລະບົບ', sub: 'National Hub', icon: Home },
-    { path: '/register', label: 'Go API ພອດ 4001', sub: 'Register & QR', icon: QrCode, matchPrefix: '/register' },
-    { path: '/farmer/register', label: '1. ແອັບຊາວກະສິກອນ', sub: 'Farmer Portal', icon: Smartphone, matchPrefix: '/farmer' },
-    { path: '/factory/batches', label: '2. ລະບົບໂຮງງານ', sub: 'Factory & Export', icon: Factory, matchPrefix: '/factory' },
-    { path: '/customs/trace/LA-COF-2026-001', label: '3. ກວດສອບດ່ານສຸລະກາກອນ', sub: 'Customs Verification', icon: ShieldCheck, matchPrefix: '/customs' },
+    { path: '/', label: 'ໜ້າຫຼັກ', sub: 'Hub', icon: Home },
+    { path: '/register', label: '1. ຊາວກະສິກອນ', sub: 'Farmer Map', icon: Smartphone, matchPrefix: '/register' },
+    { path: '/merge', label: '2. ໂຮງງານລວມລັອດ', sub: 'Factory Merge', icon: Layers, matchPrefix: '/merge' },
+    { path: '/ai-dashboard', label: '3. AI Dashboard', sub: 'EUDR & OCR', icon: Sparkles, matchPrefix: '/ai-dashboard' },
+    { path: '/customs', label: '4. ດ່ານສຸລະກາກອນ', sub: 'Green Channel', icon: ShieldCheck, matchPrefix: '/customs' },
+    { path: '/track/BATCH-LAO-001', label: '5. ຕິດຕາມສິນຄ້າ', sub: 'Track & Trace', icon: Search, matchPrefix: '/track' },
   ];
 
   return (

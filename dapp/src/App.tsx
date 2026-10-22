@@ -26,8 +26,11 @@ import { ScanAndSearch } from './pages/customs/ScanAndSearch';
 import { SingleSourceOfTruth } from './pages/customs/SingleSourceOfTruth';
 import { GreenChannelRelease } from './pages/customs/GreenChannelRelease';
 
-// Go Backend Quick Routes (Port 4001)
+// Go Backend (Port 4001) Core Modules
 import { QuickRegister } from './pages/QuickRegister';
+import { FactoryMerge } from './pages/FactoryMerge';
+import { AiDashboard } from './pages/AiDashboard';
+import { CustomsGreenChannel } from './pages/CustomsGreenChannel';
 import { PublicTracking } from './pages/PublicTracking';
 
 import { SeniorModeProvider } from './context/SeniorModeContext';
@@ -41,9 +44,13 @@ export default function App() {
             {/* 0. Central Portal Hub & Launchpad */}
             <Route index element={<PortalHub />} />
 
-            {/* Go Backend (Port 4001) Dedicated Routes */}
+            {/* The 5 LaoTrace Core Modules */}
             <Route path="register" element={<QuickRegister />} />
+            <Route path="merge" element={<FactoryMerge />} />
+            <Route path="ai-dashboard" element={<AiDashboard />} />
+            <Route path="customs" element={<CustomsGreenChannel />} />
             <Route path="track" element={<PublicTracking />} />
+            <Route path="track/:id" element={<PublicTracking />} />
             <Route path="track/:batch_id" element={<PublicTracking />} />
 
             {/* 1. Portal 1: Farmer & Middleman App (Mobile PWA Frame) */}
