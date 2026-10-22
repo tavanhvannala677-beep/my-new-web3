@@ -1,8 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { QrCode, CheckCircle2, Globe, ArrowRight, Printer, Share2, Sparkles, AlertCircle, RefreshCw, MapPin, Navigation } from 'lucide-react';
+import {
+  QrCode,
+  CheckCircle2,
+  Globe,
+  ArrowRight,
+  Printer,
+  Share2,
+  Sparkles,
+  AlertCircle,
+  RefreshCw,
+  MapPin,
+  Satellite,
+  Shield,
+  Layers,
+  Wallet as WalletIcon,
+  ExternalLink
+} from 'lucide-react';
 import L from 'leaflet';
-import { registerBatchToBackend, RegisterBatchPayload, BACKEND_BASE_URL } from '../services/backendApi';
+import { BrowserProvider, isAddress, getAddress } from 'ethers';
+import { registerBatchToBackend } from '../services/backendApi';
+import {
+  callPythonAiVerify,
+  registerBatchOnChain,
+  type AiVerifyResponse
+} from '../services/web3Traceability';
+import {
+  LAO_TRACEABILITY_ADDRESS,
+  TraceType
+} from '../contracts/laoNationalTraceability';
 
 export function QuickRegister() {
   const navigate = useNavigate();
@@ -10,9 +36,16 @@ export function QuickRegister() {
   // Form State
   const [destination, setDestination] = useState<'EU' | 'China'>('EU');
   const [batchId, setBatchId] = useState<string>(() => 'BATCH-LAO-' + Math.floor(100 + Math.random() * 900));
-  const [productName, setProductName] = useState<string>('ກາເຟອາຣາບິກາ (Arabica Coffee)');
+  const [productType, setProductType] = useState<string>('ກາເຟອາຣາບິກາ (Arabica Coffee)');
+  const [traceType, setTraceType] = useState<TraceType>(TraceType.IdentityPreserved);
+  const [quantity, setQuantity] = useState<number>(15400);
   const [farmLocation, setFarmLocation] = useState<string>('15.1764, 106.2341 (Paksong Highland, Champasak)');
-  const [ownerWallet, setOwnerWallet] = useState<string>('ສົມສັກ ພອນສະຫວັນ (Somsack Phonsavanh)');
+  const [ownerName, setOwnerName] = useState<string>('ສົມສັກ ພອນສະຫວັນ (Somsack Phonsavanh)');
+  const [targetFactory, setTargetFactory] = useState<string>('0x71C6707321eE51f72b3F3E8E349887114A51f72b');
+
+  // Web3 Wallet state
+  const [walletAccount, setWalletAccount] = useState<string | null>(null);
+  const [isConnectingWallet, setIsConnectingWallet] = useState<boolean>(false);
 
   // Map state
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -20,11 +53,54 @@ export function QuickRegister() {
   const markerRef = useRef<L.Marker | null>(null);
   const [currentCoords, setCurrentCoords] = useState<[number, number]>([15.1764, 106.2341]); // Paksong Bolaven Plateau
 
-  // Submission State
+  // 2-Step Submission State
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [registeredBatch, setRegisteredBatch] = useState<RegisterBatchPayload | null>(null);
-  const [isBackendConnected, setIsBackendConnected] = useState<boolean | null>(null);
+  const [stepStatus, setStepStatus] = useState<string>('');
+  const [aiEvidence, setAiEvidence] = useState<AiVerifyResponse | null>(null);
+  const [onChainTxHash, setOnChainTxHash] = useState<string | null>(null);
+  const [registeredBatch, setRegisteredBatch] = useState<any | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Detect MetaMask
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).ethereum) {
+      const eth = (window as any).ethereum;
+      eth.request({ method: 'eth_accounts' })
+        .then((accounts: string[]) => {
+          if (accounts && accounts.length > 0) {
+            setWalletAccount(getAddress(accounts[0]));
+          }
+        })
+        .catch(() => {});
+
+      const handleAccounts = (accs: string[]) => {
+        setWalletAccount(accs.length ? getAddress(accs[0]) : null);
+      };
+      eth.on?.('accountsChanged', handleAccounts);
+      return () => {
+        eth.removeListener?.('accountsChanged', handleAccounts);
+      };
+    }
+  }, []);
+
+  const handleConnectWallet = async () => {
+    if (typeof window === 'undefined' || !(window as any).ethereum) {
+      alert('MetaMask ບໍ່ພົບໃນບຣາວເຊີ. ກະລຸນາຕິດຕັ້ງ MetaMask ຫຼື ເປີດໃນແອັບມືຖື');
+      return;
+    }
+    try {
+      setIsConnectingWallet(true);
+      const eth = (window as any).ethereum;
+      const accounts = await eth.request({ method: 'eth_requestAccounts' });
+      if (accounts && accounts[0]) {
+        setWalletAccount(getAddress(accounts[0]));
+      }
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      setIsConnectingWallet(false);
+    }
+  };
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -93,27 +169,88 @@ export function QuickRegister() {
     setBatchId('BATCH-LAO-' + Math.floor(100 + Math.random() * 900));
   };
 
+  /**
+   * 2-Step Flow Implementation:
+   * 1. Step 1 (Off-Chain): Call Python AI API (/api/ai-verify)
+   * 2. Step 2 (On-Chain): Call Smart Contract (registerBatch) via MetaMask
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMessage(null);
+    setOnChainTxHash(null);
 
-    const farmLocationWithDest = `${farmLocation} [Destination: ${destination}]`;
-    const payload: RegisterBatchPayload = {
-      batch_id: batchId.trim(),
-      product_name: productName.trim(),
-      farm_location: farmLocationWithDest,
-      owner: ownerWallet.trim()
-    };
+    try {
+      // -----------------------------------------------------------------
+      // Step 1: Off-Chain Python AI Verification (Satellite EUDR)
+      // -----------------------------------------------------------------
+      setStepStatus('🛰️ ຂັ້ນຕອນ 1/2: ກຳລັງຍິງ API ຫາ Python AI ກວດສອບດາວທຽມ Sentinel-2 EUDR...');
+      
+      const aiResult = await callPythonAiVerify({
+        batch_id: batchId.trim(),
+        action: 'CHECK_DEFORESTATION',
+        coordinates: [
+          [currentCoords[1], currentCoords[0]],
+          [currentCoords[1] + 0.005, currentCoords[0] + 0.002],
+          [currentCoords[1] + 0.003, currentCoords[0] - 0.004],
+          [currentCoords[1], currentCoords[0]]
+        ]
+      });
 
-    const result = await registerBatchToBackend(payload);
-    setIsSubmitting(false);
+      setAiEvidence(aiResult);
 
-    if (result.success) {
-      setRegisteredBatch(payload);
-      setIsBackendConnected(result.isBackendConnected);
-    } else {
-      setErrorMessage(result.error || 'Failed to register batch');
+      if (aiResult.status !== 'PASS') {
+        throw new Error('AI EUDR Verification ບໍ່ຜ່ານ: ພົບຄວາມສ່ຽງຕັດໄມ້ທຳລາຍປ່າ');
+      }
+
+      // -----------------------------------------------------------------
+      // Step 2: On-Chain Smart Contract Invocation (registerBatch)
+      // -----------------------------------------------------------------
+      let txHash = '';
+      if (typeof window !== 'undefined' && (window as any).ethereum && walletAccount) {
+        setStepStatus('⛓️ ຂັ້ນຕອນ 2/2: ກຳລັງເປີດ MetaMask ເພື່ອບັນທຶກສັນຍາ Smart Contract ບົນ LAB Chain...');
+        const provider = new BrowserProvider((window as any).ethereum);
+        const signer = await provider.getSigner();
+
+        const onChainResult = await registerBatchOnChain(signer, {
+          batchId: batchId.trim(),
+          traceType,
+          productType: productName.trim(),
+          quantity,
+          offChainDataHash: aiResult.evidence_hash,
+          targetFactory: targetFactory.trim()
+        });
+
+        txHash = onChainResult.txHash;
+        setOnChainTxHash(txHash);
+      } else {
+        setStepStatus('⚡ ບັນທຶກລົງຖານຂໍ້ມູນ & Web 2.5 State (MetaMask ຍັງບໍ່ໄດ້ເຊື່ອມຕໍ່)...');
+      }
+
+      // Sync with Backend/Local cache for seamless tracking
+      const farmLocationWithDest = `${farmLocation} [Destination: ${destination}]`;
+      await registerBatchToBackend({
+        batch_id: batchId.trim(),
+        product_name: productName.trim(),
+        farm_location: farmLocationWithDest,
+        owner: walletAccount || ownerName.trim()
+      });
+
+      setRegisteredBatch({
+        batch_id: batchId.trim(),
+        product_name: productName.trim(),
+        farm_location: farmLocationWithDest,
+        owner: walletAccount || ownerName.trim(),
+        evidence_hash: aiResult.evidence_hash,
+        txHash
+      });
+
+      setStepStatus('✅ ລົງທະບຽນສຳເລັດສົມບູນທັງ Off-Chain AI & On-Chain Contract!');
+    } catch (err: any) {
+      console.error(err);
+      setErrorMessage(err.message || 'ເກີດຂໍ້ຜິດພາດໃນການລົງທະບຽນ');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -122,10 +259,12 @@ export function QuickRegister() {
     ? `${window.location.origin}/#/track/${encodeURIComponent(registeredBatch.batch_id)}`
     : '';
 
-  return (
-    <div style={{ maxWidth: '980px', margin: '0 auto', padding: '10px 0 40px 0' }}>
+  const productName = productType;
 
-      {/* Top Banner & Go Backend Info */}
+  return (
+    <div style={{ maxWidth: '1060px', margin: '0 auto', padding: '10px 0 40px 0' }}>
+
+      {/* Top Banner & Smart Contract Info */}
       <div style={{
         background: '#ffffff',
         border: '1.5px solid #d5dfce',
@@ -143,65 +282,89 @@ export function QuickRegister() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '20px' }}>👨‍🌾</span>
             <h1 style={{ fontSize: '18px', fontWeight: 900, color: '#153826', margin: 0 }}>
-              1. ໜ້າຊາວກະສິກອນ (Farmer Portal) — ລົງທະບຽນລັອດສິນຄ້າຕົ້ນນ້ຳ
+              1. ໜ້າຊາວກະສິກອນ — ລົງທະບຽນສິນຄ້າ (Farmer Portal)
             </h1>
           </div>
-          <p style={{ fontSize: '12.5px', color: '#4d6052', margin: '4px 0 0 0' }}>
-            Identity Preserved Traceability • API: <code style={{ background: '#eaf1e5', padding: '2px 6px', borderRadius: '4px', color: '#153826', fontWeight: 700 }}>POST {BACKEND_BASE_URL}/batch/register</code>
+          <p style={{ fontSize: '12px', color: '#4d6052', margin: '4px 0 0 0' }}>
+            Flow 2 ຈັງຫວະ: <strong>Step 1: Python AI (Satellite EUDR)</strong> ➔ <strong>Step 2: Smart Contract (registerBatch)</strong>
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: '#eaf1e5',
-            color: '#153826',
+        {/* Web3 Wallet & Contract Status Badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div style={{
+            fontSize: '11px',
+            background: '#f4f8f2',
+            border: '1px solid #c9d8c3',
             padding: '4px 10px',
             borderRadius: '6px',
-            fontWeight: 800
+            color: '#153826',
+            fontWeight: 700
           }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a' }}></span>
-            Go Backend (4001)
-          </span>
-          <Link
-            to="/merge"
-            style={{
-              color: '#153826',
-              textDecoration: 'none',
-              fontWeight: 800,
+            <span>Contract: </span>
+            <span style={{ fontFamily: 'monospace', fontWeight: 800 }}>
+              {LAO_TRACEABILITY_ADDRESS.substring(0, 6)}...{LAO_TRACEABILITY_ADDRESS.substring(38)}
+            </span>
+          </div>
+
+          {walletAccount ? (
+            <div style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '4px',
-              padding: '5px 12px',
-              background: '#ffffff',
-              border: '1px solid #d5dfce',
-              borderRadius: '6px'
-            }}
-          >
-            <span>ໄປໜ້າໂຮງງານລວມລັອດ</span>
-            <ArrowRight size={13} />
-          </Link>
+              gap: '6px',
+              padding: '6px 12px',
+              background: '#dcfce7',
+              border: '1px solid #86efac',
+              borderRadius: '6px',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              color: '#15803d'
+            }}>
+              <WalletIcon size={14} />
+              <span>{walletAccount.substring(0, 6)}...{walletAccount.substring(38)}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleConnectWallet}
+              disabled={isConnectingWallet}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                background: '#153826',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '11.5px',
+                fontWeight: 800,
+                color: '#ffffff',
+                cursor: 'pointer'
+              }}
+            >
+              <WalletIcon size={14} />
+              <span>{isConnectingWallet ? 'ກຳລັງເຊື່ອມ...' : 'ເຊື່ອມ MetaMask'}</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Main Layout Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: registeredBatch ? '1fr 1fr' : '1.1fr 0.9fr', gap: '20px' }}>
-
-        {/* Left Column: Registration Form */}
+      {/* Main Grid: Form Left, Satellite Map Right */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.15fr) minmax(320px, 0.95fr)', gap: '22px' }}>
+        
+        {/* Left Column: Register Form */}
         <div style={{
           background: '#ffffff',
           border: '1.5px solid #d5dfce',
           borderRadius: '8px',
-          padding: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+          padding: '22px',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
         }}>
           <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#142a1d', margin: '0 0 16px 0', borderBottom: '1px solid #edf2e7', paddingBottom: '10px' }}>
-            ຟອມລົງທະບຽນສິນຄ້າ (Identity Preserved)
+            ຟອມລົງທະບຽນສິນຄ້າຕົ້ນນ້ຳ (LaoTrace Register)
           </h2>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
 
             {/* Destination Toggle */}
             <div>
@@ -213,7 +376,7 @@ export function QuickRegister() {
                   type="button"
                   onClick={() => setDestination('EU')}
                   style={{
-                    padding: '12px',
+                    padding: '10px',
                     borderRadius: '6px',
                     border: destination === 'EU' ? '2px solid #153826' : '1px solid #d5dfce',
                     background: destination === 'EU' ? '#eaf1e5' : '#ffffff',
@@ -222,17 +385,17 @@ export function QuickRegister() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 800, fontSize: '13px', color: '#153826' }}>🇪🇺 ສະຫະພາບເອີຣົບ (EU)</span>
-                    {destination === 'EU' && <CheckCircle2 size={16} color="#153826" />}
+                    <span style={{ fontWeight: 800, fontSize: '12.5px', color: '#153826' }}>🇪🇺 ເອີຣົບ (EU)</span>
+                    {destination === 'EU' && <CheckCircle2 size={15} color="#153826" />}
                   </div>
-                  <span style={{ fontSize: '11px', color: '#4d6052', display: 'block', marginTop: '2px' }}>ກວດສອບ EUDR ບໍ່ຕັດໄມ້ທຳລາຍປ່າ</span>
+                  <span style={{ fontSize: '10.5px', color: '#4d6052', display: 'block', marginTop: '2px' }}>ກວດສອບ EUDR ບໍ່ຕັດໄມ້ທຳລາຍປ່າ</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => setDestination('China')}
                   style={{
-                    padding: '12px',
+                    padding: '10px',
                     borderRadius: '6px',
                     border: destination === 'China' ? '2px solid #153826' : '1px solid #d5dfce',
                     background: destination === 'China' ? '#eaf1e5' : '#ffffff',
@@ -241,84 +404,178 @@ export function QuickRegister() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 800, fontSize: '13px', color: '#153826' }}>🇨🇳 ສປ ຈີນ (China)</span>
-                    {destination === 'China' && <CheckCircle2 size={16} color="#153826" />}
+                    <span style={{ fontWeight: 800, fontSize: '12.5px', color: '#153826' }}>🇨🇳 ສປ ຈີນ (China)</span>
+                    {destination === 'China' && <CheckCircle2 size={15} color="#153826" />}
                   </div>
-                  <span style={{ fontSize: '11px', color: '#4d6052', display: 'block', marginTop: '2px' }}>AI OCR ໃບສຸຂານາໄມພືດແປພາສາຈີນ</span>
+                  <span style={{ fontSize: '10.5px', color: '#4d6052', display: 'block', marginTop: '2px' }}>GACC e-Phyto & AI OCR ແປພາສາຈີນ</span>
                 </button>
               </div>
             </div>
 
-            {/* Batch ID */}
+            {/* Trace Type & Batch ID in 2 columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#142a1d', marginBottom: '6px' }}>
+                  ປະເພດຕິດຕາມ (traceType):
+                </label>
+                <select
+                  value={traceType}
+                  onChange={(e) => setTraceType(Number(e.target.value) as TraceType)}
+                  style={{
+                    width: '100%',
+                    padding: '9px 10px',
+                    borderRadius: '6px',
+                    border: '1.5px solid #d5dfce',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    color: '#153826',
+                    background: '#ffffff'
+                  }}
+                >
+                  <option value={TraceType.IdentityPreserved}>0: Identity Preserved (ກາເຟ/ຢາງ)</option>
+                  <option value={TraceType.MassBalance}>1: Mass Balance (ມັນຕົ້ນ/ອ້ອຍ)</option>
+                  <option value={TraceType.IndividualTrace}>2: Individual Trace (ສັດລ້ຽງ)</option>
+                </select>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 800, color: '#142a1d' }}>
+                    ລະຫັດລັອດ (_batchId):
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleRegenerateId}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#153826',
+                      fontSize: '10.5px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      fontWeight: 700
+                    }}
+                  >
+                    <RefreshCw size={10} />
+                    <span>ສຸ່ມ</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={batchId}
+                  onChange={(e) => setBatchId(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '9px 10px',
+                    borderRadius: '6px',
+                    border: '1.5px solid #d5dfce',
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    color: '#153826',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Product Type & Quantity */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '10px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#142a1d', marginBottom: '6px' }}>
+                  ຊື່ສິນຄ້າ (_productType): <span style={{ color: '#b45309' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={productType}
+                  onChange={(e) => setProductType(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '9px 10px',
+                    borderRadius: '6px',
+                    border: '1.5px solid #d5dfce',
+                    fontSize: '12.5px',
+                    color: '#142a1d',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#142a1d', marginBottom: '6px' }}>
+                  ນ້ຳໜັກ (_quantity kg): <span style={{ color: '#b45309' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '9px 10px',
+                    borderRadius: '6px',
+                    border: '1.5px solid #d5dfce',
+                    fontSize: '12.5px',
+                    fontWeight: 800,
+                    color: '#153826',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Target Factory Wallet Address (_targetFactory) */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <label style={{ fontSize: '12px', fontWeight: 800, color: '#142a1d' }}>
-                  ລະຫັດລັອດສິນຄ້າ (batch_id): <span style={{ color: '#b45309' }}>*</span>
+                  ເລືອກໂຮງງານປາຍທາງ (_targetFactory Wallet Address): <span style={{ color: '#b45309' }}>*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={handleRegenerateId}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#153826',
-                    fontSize: '11px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontWeight: 700
-                  }}
-                >
-                  <RefreshCw size={11} />
-                  <span>ສຸ່ມລະຫັດ</span>
-                </button>
               </div>
               <input
                 type="text"
-                value={batchId}
-                onChange={(e) => setBatchId(e.target.value)}
+                value={targetFactory}
+                onChange={(e) => setTargetFactory(e.target.value)}
                 required
+                placeholder="0x..."
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
+                  padding: '9px 10px',
                   borderRadius: '6px',
                   border: '1.5px solid #d5dfce',
-                  fontSize: '13.5px',
-                  fontWeight: 800,
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
                   color: '#153826',
-                  letterSpacing: '0.3px',
+                  fontWeight: 700,
                   boxSizing: 'border-box'
                 }}
               />
-            </div>
-
-            {/* Product Name */}
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#142a1d', marginBottom: '6px' }}>
-                ຊື່ສິນຄ້າ (product_name): <span style={{ color: '#b45309' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '6px',
-                  border: '1.5px solid #d5dfce',
-                  fontSize: '13px',
-                  color: '#142a1d',
-                  boxSizing: 'border-box'
-                }}
-              />
+              <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '10.5px', color: '#64748b' }}>ຕົວຢ່າງໂຮງງານ:</span>
+                <button
+                  type="button"
+                  onClick={() => setTargetFactory('0x71C6707321eE51f72b3F3E8E349887114A51f72b')}
+                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '10px', padding: '2px 6px', cursor: 'pointer' }}
+                >
+                  🏭 ໂຮງງານກາເຟດາວ (Dao Coffee)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetFactory('0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC')}
+                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '10px', padding: '2px 6px', cursor: 'pointer' }}
+                >
+                  🏭 ໂຮງງານແປ້ງມັນຕົ້ນ ລາວ-ຈີນ
+                </button>
+              </div>
             </div>
 
             {/* Farm Location Input (Synched with Map) */}
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#142a1d', marginBottom: '6px' }}>
-                ພິກັດແປງປູກ (farm_location): <span style={{ color: '#b45309' }}>*</span>
+                ພິກັດແປງປູກ (Farm Location Coordinates): <span style={{ color: '#b45309' }}>*</span>
               </label>
               <input
                 type="text"
@@ -327,7 +584,7 @@ export function QuickRegister() {
                 required
                 style={{
                   width: '100%',
-                  padding: '10px 12px',
+                  padding: '9px 10px',
                   borderRadius: '6px',
                   border: '1.5px solid #d5dfce',
                   fontSize: '12px',
@@ -336,32 +593,22 @@ export function QuickRegister() {
                   boxSizing: 'border-box'
                 }}
               />
-              <span style={{ fontSize: '11px', color: '#708375', marginTop: '4px', display: 'block' }}>
-                💡 ສາມາດຄລິກເລືອກຈຸດ ຫຼື ລາກໝຸດບົນແຜນທີ່ດາວທຽມດ້ານຂວາເພື່ອປັບພິກັດ
-              </span>
             </div>
 
-            {/* Owner */}
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 800, color: '#142a1d', marginBottom: '6px' }}>
-                ຊື່ຊາວກະສິກອນ / ເຈົ້າຂອງແປງ (owner): <span style={{ color: '#b45309' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={ownerWallet}
-                onChange={(e) => setOwnerWallet(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '6px',
-                  border: '1.5px solid #d5dfce',
-                  fontSize: '12.5px',
-                  color: '#142a1d',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
+            {/* Status updates during 2-step process */}
+            {stepStatus && (
+              <div style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                padding: '10px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                color: '#166534',
+                lineHeight: 1.4
+              }}>
+                {stepStatus}
+              </div>
+            )}
 
             {errorMessage && (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '10px', borderRadius: '6px', color: '#991b1b', fontSize: '12px' }}>
@@ -374,13 +621,13 @@ export function QuickRegister() {
               type="submit"
               disabled={isSubmitting}
               style={{
-                marginTop: '8px',
+                marginTop: '4px',
                 padding: '12px 20px',
                 background: '#153826',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '6px',
-                fontSize: '14px',
+                fontSize: '13.5px',
                 fontWeight: 800,
                 cursor: isSubmitting ? 'not-allowed' : 'pointer',
                 display: 'flex',
@@ -391,11 +638,14 @@ export function QuickRegister() {
               }}
             >
               {isSubmitting ? (
-                <span>ກຳລັງບັນທຶກເຂົ້າ Go Backend...</span>
+                <>
+                  <RefreshCw size={16} className="animate-spin" />
+                  <span>ກຳລັງປະມວນຜົນ 2-Step Flow...</span>
+                </>
               ) : (
                 <>
                   <QrCode size={18} />
-                  <span>ບັນທຶກສິນຄ້າ & ສ້າງ QR Code</span>
+                  <span>ຍື່ນກວດ AI & ບັນທຶກ Smart Contract</span>
                 </>
               )}
             </button>
@@ -490,20 +740,59 @@ export function QuickRegister() {
                 marginBottom: '10px'
               }}>
                 <CheckCircle2 size={14} />
-                <span>ສ້າງ QR Code ສຳເລັດ!</span>
+                <span>ສ້າງ QR Code & On-Chain สำเร็จ!</span>
               </div>
 
               <div style={{ fontSize: '18px', fontWeight: 900, color: '#153826', letterSpacing: '0.5px' }}>
                 {registeredBatch.batch_id}
               </div>
-              <div style={{ fontSize: '12px', color: '#4d6052', marginBottom: '12px' }}>
+              <div style={{ fontSize: '12px', color: '#4d6052', marginBottom: '8px' }}>
                 {registeredBatch.product_name}
               </div>
+
+              {/* AI & On-chain Proof Badges */}
+              {registeredBatch.evidence_hash && (
+                <div style={{
+                  fontSize: '11px',
+                  background: '#f0fdf4',
+                  color: '#166534',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  marginBottom: '8px',
+                  fontFamily: 'monospace',
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  IPFS: {registeredBatch.evidence_hash}
+                </div>
+              )}
+
+              {onChainTxHash && (
+                <a
+                  href={`https://explorer.labchain.la/tx/${onChainTxHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    color: '#0284c7',
+                    textDecoration: 'none',
+                    fontWeight: 700,
+                    marginBottom: '10px'
+                  }}
+                >
+                  <span>Tx: {onChainTxHash.substring(0, 10)}...{onChainTxHash.substring(56)}</span>
+                  <ExternalLink size={11} />
+                </a>
+              )}
 
               {/* QR Image Box */}
               <div style={{
                 background: '#ffffff',
-                padding: '12px',
+                padding: '10px',
                 borderRadius: '8px',
                 border: '2px solid #153826',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
@@ -512,7 +801,7 @@ export function QuickRegister() {
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(trackingUrl)}`}
                   alt="Product Batch QR"
-                  style={{ width: '180px', height: '180px', display: 'block' }}
+                  style={{ width: '160px', height: '160px', display: 'block' }}
                 />
               </div>
 

@@ -14,9 +14,21 @@ import {
   Clock,
   AlertTriangle,
   QrCode,
-  Sparkles
+  Sparkles,
+  Wallet as WalletIcon
 } from 'lucide-react';
-import { fetchBatchFromBackend, runCustomsClearance, parseEvidenceHash, BatchResponse, BACKEND_BASE_URL } from '../services/backendApi';
+import { BrowserProvider, getAddress } from 'ethers';
+import { fetchBatchFromBackend, runCustomsClearance, parseEvidenceHash, BatchResponse } from '../services/backendApi';
+import {
+  addVerificationLogOnChain,
+  getBatchFromChain,
+  getBatchLogsFromChain,
+  getLabChainReadOnlyProvider
+} from '../services/web3Traceability';
+import {
+  LAO_TRACEABILITY_ADDRESS,
+  BatchStatus
+} from '../contracts/laoNationalTraceability';
 
 export function CustomsGreenChannel() {
   // Step 1: Input / Scan State
@@ -25,18 +37,87 @@ export function CustomsGreenChannel() {
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [cameraScanProgress, setCameraScanProgress] = useState<number>(0);
 
+  // Web3 Wallet State
+  const [walletAccount, setWalletAccount] = useState<string | null>(null);
+  const [isConnectingWallet, setIsConnectingWallet] = useState<boolean>(false);
+
   // Loaded Batch State
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [batchData, setBatchData] = useState<BatchResponse | null>(null);
+  const [onChainBatch, setOnChainBatch] = useState<any | null>(null);
 
   // Step 2: Approval State
   const [isApproving, setIsApproving] = useState<boolean>(false);
   const [approvalResult, setApprovalResult] = useState<any>(null);
+  const [onChainTxHash, setOnChainTxHash] = useState<string | null>(null);
+
+  // Detect Wallet
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).ethereum) {
+      const eth = (window as any).ethereum;
+      eth.request({ method: 'eth_accounts' })
+        .then((accounts: string[]) => {
+          if (accounts && accounts.length > 0) {
+            setWalletAccount(getAddress(accounts[0]));
+          }
+        })
+        .catch(() => {});
+
+      const handleAccounts = (accs: string[]) => {
+        setWalletAccount(accs.length ? getAddress(accs[0]) : null);
+      };
+      eth.on?.('accountsChanged', handleAccounts);
+      return () => {
+        eth.removeListener?.('accountsChanged', handleAccounts);
+      };
+    }
+  }, []);
+
+  const handleConnectWallet = async () => {
+    if (typeof window === 'undefined' || !(window as any).ethereum) {
+      alert('MetaMask ບໍ່ພົບໃນບຣາວເຊີ. ກະລຸນາຕິດຕັ້ງ MetaMask');
+      return;
+    }
+    try {
+      setIsConnectingWallet(true);
+      const eth = (window as any).ethereum;
+      const accounts = await eth.request({ method: 'eth_requestAccounts' });
+      if (accounts && accounts[0]) {
+        setWalletAccount(getAddress(accounts[0]));
+      }
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      setIsConnectingWallet(false);
+    }
+  };
 
   // Fetch batch details on load or submission
   const loadBatch = async (id: string) => {
     setIsLoading(true);
     setApprovalResult(null);
+    setOnChainTxHash(null);
+
+    // Try fetching from Smart Contract first
+    try {
+      const provider = (typeof window !== 'undefined' && (window as any).ethereum)
+        ? new BrowserProvider((window as any).ethereum)
+        : getLabChainReadOnlyProvider();
+
+      const chainBatch = await getBatchFromChain(provider, id.trim());
+      const chainLogs = await getBatchLogsFromChain(provider, id.trim());
+
+      if (chainBatch) {
+        setOnChainBatch({
+          ...chainBatch,
+          logs: chainLogs
+        });
+      }
+    } catch (e) {
+      console.warn('Could not read from contract:', e);
+    }
+
+    // Always ensure backend / mock data is also loaded for rich UI display
     try {
       const data = await fetchBatchFromBackend(id.trim());
       setBatchData(data);
@@ -77,36 +158,65 @@ export function CustomsGreenChannel() {
     }, 400);
   };
 
-  // Step 2: Approve Customs Clearance
+  // Step 2: Approve Customs Clearance (addVerificationLog on-chain)
   const handleApproveClearance = async () => {
-    if (!batchData?.data.batch.batch_id) return;
+    const targetBatchId = batchData?.data.batch.batch_id || inputBatchId;
+    if (!targetBatchId) return;
 
     setIsApproving(true);
-    const payload = {
-      batch_id: batchData.data.batch.batch_id,
-      action: "GACC_CLEARED_GREEN_CHANNEL",
-      evidence_hash: "Customs Officer Verified #8812 - Mohan/Boten Border Control"
-    };
+    let txHash = '';
 
-    const res = await runCustomsClearance(payload);
-    setIsApproving(false);
+    try {
+      // On-Chain verification log call to Smart Contract
+      if (typeof window !== 'undefined' && (window as any).ethereum && walletAccount) {
+        const provider = new BrowserProvider((window as any).ethereum);
+        const signer = await provider.getSigner();
 
-    if (res.success) {
+        const onChainRes = await addVerificationLogOnChain(signer, {
+          batchId: targetBatchId,
+          action: 'GACC_CLEARED_GREEN_CHANNEL',
+          evidenceHash: 'Customs Officer Verified #8812 - Mohan/Boten Border Control',
+          newStatus: BatchStatus.ExportCleared // 3
+        });
+
+        txHash = onChainRes.txHash;
+        setOnChainTxHash(txHash);
+      }
+
+      // Sync with backend
+      const payload = {
+        batch_id: targetBatchId,
+        action: 'GACC_CLEARED_GREEN_CHANNEL',
+        evidence_hash: 'Customs Officer Verified #8812 - Mohan/Boten Border Control'
+      };
+
+      await runCustomsClearance(payload);
+
       setApprovalResult({
         approvedAt: new Date().toISOString(),
         officer: 'GACC Mohan Officer #8812 & Boten Customs Node',
         trainNo: 'Lao-China Railway Cargo LX-802',
-        sealId: 'TGHU-992140-7'
+        sealId: 'TGHU-992140-7',
+        txHash
       });
-      // Refresh batch view
-      loadBatch(batchData.data.batch.batch_id);
+
+      // Refresh view
+      loadBatch(targetBatchId);
+    } catch (err: any) {
+      console.error('Approval failed:', err);
+      alert('Approval error: ' + (err.message || 'Transaction failed'));
+    } finally {
+      setIsApproving(false);
     }
   };
 
   const eudrLog = batchData?.data.logs?.find(l => l.verifier === 'AI_EUDR_Engine');
   const ocrLog = batchData?.data.logs?.find(l => l.verifier === 'AI_CrossBorder_OCR');
   const parsedOcr = ocrLog ? parseEvidenceHash(ocrLog.evidence_hash) : null;
-  const isAlreadyCleared = batchData?.data.batch.status === 'GACC_CLEARED_GREEN_CHANNEL' || Boolean(approvalResult);
+  const isAlreadyCleared =
+    batchData?.data.batch.status === 'GACC_CLEARED_GREEN_CHANNEL' ||
+    Boolean(approvalResult) ||
+    onChainBatch?.status === BatchStatus.ExportCleared;
 
   return (
     <div style={{ maxWidth: '980px', margin: '0 auto', padding: '10px 0 40px 0' }}>
@@ -133,61 +243,94 @@ export function CustomsGreenChannel() {
             </h1>
           </div>
           <p style={{ fontSize: '12.5px', color: '#4d6052', margin: '4px 0 0 0' }}>
-            ດ່ານສາກົນ ບໍ່ເຕັນ (LA) ⇌ ໂມ່ຫານ (CN) • ອະນຸມັດປ່ອຍຜ່ານຂະບວນລົດໄຟ ລາວ-ຈີນ
+            ກວດສອບ Smart Contract ➔ ອະນຸມັດ <code>addVerificationLog (ExportCleared)</code> ບົນ LAB Chain
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: '#eaf1e5',
-            color: '#153826',
-            padding: '4px 10px',
-            borderRadius: '6px',
-            fontWeight: 800
-          }}>
-            <TrainTrack size={14} color="#15803d" />
-            Lao-China Rail Green Channel
-          </span>
-          <Link
-            to={`/track/${encodeURIComponent(inputBatchId)}`}
-            style={{
-              color: '#153826',
-              textDecoration: 'none',
-              fontWeight: 800,
+        {/* Web3 Wallet status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          {walletAccount ? (
+            <div style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '4px',
-              padding: '5px 12px',
-              background: '#ffffff',
-              border: '1px solid #d5dfce',
-              borderRadius: '6px'
-            }}
-          >
-            <span>ເບິ່ງໜ້າ Track ຜູ້ບໍລິໂພກ</span>
-            <ArrowRight size={13} />
-          </Link>
+              gap: '6px',
+              padding: '6px 12px',
+              background: '#dcfce7',
+              border: '1px solid #86efac',
+              borderRadius: '6px',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              color: '#15803d'
+            }}>
+              <WalletIcon size={14} />
+              <span>ດ່ານພາສີ: {walletAccount.substring(0, 6)}...{walletAccount.substring(38)}</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleConnectWallet}
+              disabled={isConnectingWallet}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                background: '#153826',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '11.5px',
+                fontWeight: 800,
+                color: '#ffffff',
+                cursor: 'pointer'
+              }}
+            >
+              <WalletIcon size={14} />
+              <span>{isConnectingWallet ? 'ກຳລັງເຊື່ອມ...' : 'ເຊື່ອມ MetaMask (ເຈົ້າໜ້າທີ່)'}</span>
+            </button>
+          )}
+
+          <div style={{ fontSize: '11px', color: '#15803d', background: '#ecfdf5', padding: '4px 10px', borderRadius: '4px', border: '1px solid #86efac', fontWeight: 700 }}>
+            Mohan ⇌ Boten Fast-Pass
+          </div>
         </div>
       </div>
 
-      {/* STEP 1: Dual Input/Scan Methods (Manual & Camera) as in brief */}
+      {/* STEP 1: Search / Scan Input Box (Dual Input Tab) */}
       <div style={{
         background: '#ffffff',
         border: '1.5px solid #d5dfce',
         borderRadius: '8px',
         padding: '20px',
-        marginBottom: '22px',
+        marginBottom: '20px',
         boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '14px', fontWeight: 800, color: '#153826' }}>
-            ຂັ້ນຕອນທີ 1: ເລືອກວິທີດຶງຂໍ້ມູນສິນຄ້າ (Step 1: Input / Scan & Fetch)
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              background: '#153826',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              fontWeight: 900
+            }}>1</span>
+            <h2 style={{ fontSize: '15px', fontWeight: 800, color: '#142a1d', margin: 0 }}>
+              Step 1: ປ້ອນລະຫັດລັອດ ຫຼື ສະແກນ QR Code (Dual Input)
+            </h2>
           </div>
 
-          {/* Toggle between Manual and Camera */}
-          <div style={{ display: 'flex', background: '#edf2e7', padding: '3px', borderRadius: '6px', gap: '4px' }}>
+          {/* Mode Switcher Tabs */}
+          <div style={{
+            display: 'flex',
+            background: '#edf2e7',
+            padding: '3px',
+            borderRadius: '6px',
+            border: '1px solid #d5dfce'
+          }}>
             <button
               type="button"
               onClick={() => setActiveTab('manual')}
@@ -195,15 +338,18 @@ export function CustomsGreenChannel() {
                 padding: '6px 14px',
                 borderRadius: '4px',
                 border: 'none',
-                background: activeTab === 'manual' ? '#ffffff' : 'transparent',
-                color: activeTab === 'manual' ? '#153826' : '#4d6052',
-                fontWeight: 800,
+                background: activeTab === 'manual' ? '#153826' : 'transparent',
+                color: activeTab === 'manual' ? '#ffffff' : '#4d6052',
                 fontSize: '12px',
+                fontWeight: 800,
                 cursor: 'pointer',
-                boxShadow: activeTab === 'manual' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}
             >
-              ⌨️ ພິມກອກລະຫັດ (Manual Input)
+              <Search size={13} />
+              <span>ພິມລະຫັດເອງ (Manual)</span>
             </button>
             <button
               type="button"
@@ -212,42 +358,42 @@ export function CustomsGreenChannel() {
                 padding: '6px 14px',
                 borderRadius: '4px',
                 border: 'none',
-                background: activeTab === 'camera' ? '#ffffff' : 'transparent',
-                color: activeTab === 'camera' ? '#153826' : '#4d6052',
-                fontWeight: 800,
+                background: activeTab === 'camera' ? '#153826' : 'transparent',
+                color: activeTab === 'camera' ? '#ffffff' : '#4d6052',
                 fontSize: '12px',
+                fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                boxShadow: activeTab === 'camera' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                gap: '6px'
               }}
             >
               <Camera size={13} />
-              <span>📷 ເປີດກ້ອງສະແກນ QR Code</span>
+              <span>ສະແກນ QR ຜ່ານກ້ອງ</span>
             </button>
           </div>
         </div>
 
-        {/* Tab 1: Manual Input (from Manifest document) */}
+        {/* Tab 1: Manual Input */}
         {activeTab === 'manual' && (
-          <form onSubmit={handleManualSearch} style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '260px' }}>
+          <form onSubmit={handleManualSearch} style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
               <input
                 type="text"
                 value={inputBatchId}
                 onChange={(e) => setInputBatchId(e.target.value)}
-                placeholder="ກອກເລກທີເອກະສານ Manifest ຫຼື Batch ID ເຊັ່ນ: BATCH-LAO-001..."
+                placeholder="ປ້ອນລະຫັດ Batch ID ຈາກໃບ Manifest (ເຊັ່ນ: BATCH-LAO-001 ຫຼື FACTORY-001)..."
+                required
                 style={{
                   width: '100%',
-                  boxSizing: 'border-box',
                   padding: '11px 14px',
                   borderRadius: '6px',
                   border: '1.5px solid #d5dfce',
                   fontSize: '13.5px',
                   fontWeight: 800,
                   color: '#153826',
-                  letterSpacing: '0.3px'
+                  fontFamily: 'monospace',
+                  boxSizing: 'border-box'
                 }}
               />
             </div>
@@ -255,7 +401,7 @@ export function CustomsGreenChannel() {
               type="submit"
               disabled={isLoading}
               style={{
-                padding: '11px 22px',
+                padding: '11px 20px',
                 background: '#153826',
                 color: '#ffffff',
                 border: 'none',
@@ -268,301 +414,306 @@ export function CustomsGreenChannel() {
                 gap: '6px'
               }}
             >
-              <Search size={16} />
-              <span>ດຶງຂໍ້ມູນກວດສອບ (GET /batch/:id)</span>
+              <Search size={15} />
+              <span>{isLoading ? 'ກຳລັງຄົ້ນຫາ...' : 'ດຶງຂໍ້ມູນ (Search)'}</span>
             </button>
-
-            {/* Quick Manifest Samples */}
-            <div style={{ width: '100%', display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
-              <span style={{ fontSize: '11.5px', color: '#708375', fontWeight: 700 }}>ຕົວຢ່າງເອກະສານດ່ານ:</span>
-              <button
-                type="button"
-                onClick={() => { setInputBatchId('BATCH-LAO-001'); loadBatch('BATCH-LAO-001'); }}
-                style={{ padding: '3px 8px', fontSize: '11px', borderRadius: '4px', border: '1px solid #d5dfce', background: '#f8fafc', cursor: 'pointer', fontWeight: 700 }}
-              >
-                BATCH-LAO-001 (EU Arabica)
-              </button>
-              <button
-                type="button"
-                onClick={() => { setInputBatchId('FACTORY-001'); loadBatch('FACTORY-001'); }}
-                style={{ padding: '3px 8px', fontSize: '11px', borderRadius: '4px', border: '1px solid #d5dfce', background: '#f8fafc', cursor: 'pointer', fontWeight: 700 }}
-              >
-                FACTORY-001 (Merged China Cargo)
-              </button>
-            </div>
           </form>
         )}
 
-        {/* Tab 2: Camera QR Scanner Simulation */}
+        {/* Tab 2: Camera Scanner */}
         {activeTab === 'camera' && (
           <div style={{
             background: '#0f172a',
             borderRadius: '8px',
             padding: '24px',
             textAlign: 'center',
-            color: '#f8fafc'
+            color: '#ffffff'
           }}>
-            {!isCameraActive ? (
-              <div>
-                <QrCode size={40} color="#38bdf8" style={{ margin: '0 auto 10px auto' }} />
-                <div style={{ fontSize: '15px', fontWeight: 800, marginBottom: '6px' }}>
-                  ເຄື່ອງສະແກນ QR Code ຕູ້ຄອນເທນເນີ
+            {isCameraActive ? (
+              <div style={{ maxWidth: '340px', margin: '0 auto' }}>
+                <div style={{
+                  width: '200px',
+                  height: '200px',
+                  border: '2px solid #22c55e',
+                  borderRadius: '12px',
+                  margin: '0 auto 16px auto',
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'rgba(34, 197, 94, 0.05)'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: `${cameraScanProgress}%`,
+                    left: 0,
+                    right: 0,
+                    height: '2px',
+                    background: '#22c55e',
+                    boxShadow: '0 0 8px #22c55e'
+                  }} />
+                  <QrCode size={64} color="#22c55e" style={{ opacity: 0.6 }} />
                 </div>
-                <p style={{ fontSize: '12px', color: '#94a3b8', maxWidth: '360px', margin: '0 auto 16px auto', lineHeight: 1.5 }}>
-                  ກົດປຸ່ມດ້ານລຸ່ມເພື່ອເປີດກ້ອງສະແກນ QR Code ທີ່ຕິດຢູ່ຕູ້ສິນຄ້າ ຫຼື ປ້າຍ Manifest.
+                <div style={{ fontSize: '13px', color: '#86efac', fontWeight: 700 }}>
+                  ກຳລັງສະແກນ QR Code... {cameraScanProgress}%
+                </div>
+              </div>
+            ) : (
+              <div>
+                <QrCode size={44} color="#94a3b8" style={{ margin: '0 auto 10px auto' }} />
+                <div style={{ fontSize: '14px', fontWeight: 800, marginBottom: '6px' }}>
+                  ກ້ອງພ້ອມສະແກນ QR Code ໜ້າກ່ອງສິນຄ້າ
+                </div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 16px 0' }}>
+                  ກົດປຸ່ມດ້ານລຸ່ມເພື່ອເປີດກ້ອງ ຫຼື ຈຳລອງການສະແກນສິນຄ້າຜ່ານດ່ານ
                 </p>
                 <button
                   type="button"
                   onClick={startCameraScan}
                   style={{
-                    padding: '10px 24px',
-                    background: '#0284c7',
+                    padding: '10px 22px',
+                    background: '#16a34a',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '6px',
-                    fontWeight: 800,
                     fontSize: '13px',
+                    fontWeight: 800,
                     cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '8px'
                   }}
                 >
                   <Camera size={16} />
-                  <span>ເປີດກ້ອງສະແກນດຽວນີ້</span>
+                  <span>ເປີດກ້ອງສະແກນ (Simulate Scan)</span>
                 </button>
-              </div>
-            ) : (
-              <div style={{ padding: '20px 0' }}>
-                <div style={{ fontSize: '14px', fontWeight: 800, color: '#38bdf8', marginBottom: '8px' }}>
-                  ກຳລັງຈັບຈຸດ QR Code... {cameraScanProgress}%
-                </div>
-                <div style={{ width: '220px', height: '6px', background: '#1e293b', borderRadius: '4px', margin: '0 auto 12px auto', overflow: 'hidden' }}>
-                  <div style={{ width: `${cameraScanProgress}%`, height: '100%', background: '#38bdf8', transition: 'width 0.3s' }} />
-                </div>
-                <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                  ລັອກເປົ້າໝາຍຕູ້ຄອນເທນເນີ FACTORY-001...
-                </span>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Batch Inspection Details Display */}
-      {isLoading ? (
-        <div style={{ background: '#ffffff', padding: '36px', textAlign: 'center', borderRadius: '8px', border: '1px solid #d5dfce' }}>
-          <div style={{ fontSize: '14px', color: '#153826', fontWeight: 800 }}>ກຳລັງກວດສອບກັບລະບົບ e-Customs & Go Backend...</div>
-        </div>
-      ) : batchData?.data?.batch ? (
+      {/* Batch Inspection Details */}
+      {batchData && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-          {/* Batch Header Overview */}
           <div style={{
             background: '#ffffff',
-            border: '2px solid #153826',
+            border: '1.5px solid #d5dfce',
             borderRadius: '8px',
-            padding: '24px',
-            boxShadow: '0 4px 14px rgba(21, 56, 38, 0.05)'
+            padding: '22px',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
               <div>
-                <span style={{ fontSize: '11px', color: '#4d6052', fontWeight: 800, textTransform: 'uppercase' }}>
-                  ໝາຍເລກລັອດທີ່ກວດພົບ (VERIFIED BATCH)
-                </span>
-                <h2 style={{ fontSize: '24px', fontWeight: 900, color: '#153826', margin: '2px 0 0 0', letterSpacing: '0.5px' }}>
-                  {batchData.data.batch.batch_id}
-                </h2>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: '#142a1d', marginTop: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '18px', fontWeight: 900, color: '#153826', letterSpacing: '0.4px' }}>
+                    {batchData.data.batch.batch_id}
+                  </span>
+                  {isAlreadyCleared ? (
+                    <span style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 800 }}>
+                      ✓ GACC_CLEARED_GREEN_CHANNEL
+                    </span>
+                  ) : (
+                    <span style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 800 }}>
+                      ⏳ ລໍຖ້າເຈົ້າໜ້າທີ່ອະນຸມັດ
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 800, color: '#334155', marginTop: '4px' }}>
                   {batchData.data.batch.product_name}
                 </div>
               </div>
 
-              {/* Status Badge */}
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '11.5px', color: '#64748b' }}>ເຈົ້າຂອງ / ໂຮງງານ:</div>
+                <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#153826' }}>
+                  {batchData.data.batch.owner}
+                </div>
+              </div>
+            </div>
+
+            {/* Smart Contract On-Chain Details if present */}
+            {onChainBatch && (
               <div style={{
-                background: isAlreadyCleared ? '#dcfce7' : '#fef3c7',
-                color: isAlreadyCleared ? '#15803d' : '#92400e',
-                border: `1.5px solid ${isAlreadyCleared ? '#86efac' : '#fde68a'}`,
-                padding: '6px 14px',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
                 borderRadius: '6px',
-                fontWeight: 800,
-                fontSize: '13px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
+                padding: '12px',
+                marginBottom: '16px',
+                fontSize: '11.5px'
               }}>
-                <ShieldCheck size={16} />
-                <span>{isAlreadyCleared ? 'GACC_CLEARED_GREEN_CHANNEL' : batchData.data.batch.status}</span>
-              </div>
-            </div>
-
-            {/* Grid of Key Metadata */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '12px',
-              background: '#edf4e8',
-              padding: '14px',
-              borderRadius: '6px',
-              border: '1px solid #d5dfce',
-              fontSize: '12.5px'
-            }}>
-              <div>
-                <span style={{ color: '#4d6052', display: 'block', fontSize: '11px', fontWeight: 700 }}>ເຈົ້າຂອງສິນຄ້າ (Owner):</span>
-                <strong style={{ color: '#142a1d' }}>{batchData.data.batch.owner}</strong>
-              </div>
-
-              <div>
-                <span style={{ color: '#4d6052', display: 'block', fontSize: '11px', fontWeight: 700 }}>ແຫຼ່ງທີ່ມາ / ສະຖານທີ່:</span>
-                <strong style={{ color: '#142a1d' }}>{batchData.data.batch.farm_location || 'ປາກຊ່ອງ, ຈຳປາສັກ'}</strong>
-              </div>
-
-              {batchData.data.batch.quantity && (
-                <div>
-                  <span style={{ color: '#4d6052', display: 'block', fontSize: '11px', fontWeight: 700 }}>ນ້ຳໜັກລວມ (Weight):</span>
-                  <strong style={{ color: '#059669' }}>{batchData.data.batch.quantity.toLocaleString()} kg</strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontWeight: 800, color: '#0f172a' }}>⛓️ ຂໍ້ມູນ Smart Contract (On-Chain Proof):</span>
+                  <span style={{ color: '#0284c7', fontFamily: 'monospace' }}>Address: {LAO_TRACEABILITY_ADDRESS.substring(0, 10)}...</span>
                 </div>
-              )}
-
-              {batchData.data.batch.parent_batches && (
-                <div>
-                  <span style={{ color: '#4d6052', display: 'block', fontSize: '11px', fontWeight: 700 }}>ລັອດຕົ້ນທາງ:</span>
-                  <strong style={{ color: '#0284c7' }}>{batchData.data.batch.parent_batches.join(', ')}</strong>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', color: '#334155' }}>
+                  <div><strong>Operator:</strong> <span style={{ fontFamily: 'monospace' }}>{onChainBatch.operator.substring(0, 8)}...</span></div>
+                  <div><strong>Target Factory:</strong> <span style={{ fontFamily: 'monospace' }}>{onChainBatch.targetFactory.substring(0, 8)}...</span></div>
+                  <div><strong>Trace Type:</strong> {onChainBatch.traceType === 0 ? 'Identity Preserved' : 'Mass Balance'}</div>
+                  <div><strong>Status:</strong> {onChainBatch.status === 3 ? 'ExportCleared (3)' : `Status (${onChainBatch.status})`}</div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* AI Pre-Checks: EUDR Satellite & GACC OCR Proofs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
-
-            {/* EUDR Deforestation Card */}
-            <div style={{
-              background: '#ffffff',
-              border: '1.5px solid #86efac',
-              borderRadius: '8px',
-              padding: '18px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <Satellite size={18} color="#15803d" />
-                <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#15803d', margin: 0 }}>
-                  ໃບຢັ້ງຢືນດາວທຽມ EUDR ບໍ່ຕັດໄມ້ທຳລາຍປ່າ
-                </h4>
               </div>
-              <div style={{ fontSize: '12px', color: '#166534', lineHeight: 1.5 }}>
+            )}
+
+            {/* Evidence Cards Grid: EUDR Left, OCR Right */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '18px' }}>
+              
+              {/* EUDR Satellite Proof */}
+              <div style={{
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '6px',
+                padding: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  <Satellite size={16} color="#15803d" />
+                  <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#166534' }}>
+                    1. ຫຼັກຖານດາວທຽມ EUDR (Sentinel-2)
+                  </span>
+                </div>
                 {eudrLog ? (
-                  <>
-                    <div style={{ fontWeight: 800, color: '#15803d', marginBottom: '4px' }}>
-                      ✅ ຜ່ານການວິເຄາະ Sentinel-2 (NDVI: 0.86)
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#15803d', fontWeight: 700, marginBottom: '4px' }}>
+                      ✓ {eudrLog.action}
                     </div>
-                    <div>Cutoff date: 31/12/2020 ຜ່ານເກນ 100%</div>
-                    <div style={{ fontSize: '11px', color: '#4d6052', marginTop: '4px' }}>
-                      Hash: {eudrLog.evidence_hash}
+                    <div style={{ fontSize: '11px', color: '#4d6052', fontFamily: 'monospace' }}>
+                      Evidence Hash: {eudrLog.evidence_hash}
                     </div>
-                  </>
+                  </div>
                 ) : (
-                  <div style={{ color: '#65a30d' }}>
-                    ✅ ກວດສອບພື້ນທີ່ປ່າໄມ້ຜ່ານເກນ EUDR
+                  <div style={{ fontSize: '11.5px', color: '#15803d' }}>
+                    ✓ ຜ່ານການກວດສອບພື້ນທີ່ບໍ່ຕັດໄມ້ທຳລາຍປ່າແລ້ວ
+                  </div>
+                )}
+              </div>
+
+              {/* Chinese Translation Proof */}
+              <div style={{
+                background: '#fefce8',
+                border: '1px solid #fef08a',
+                borderRadius: '6px',
+                padding: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  <Languages size={16} color="#854d0e" />
+                  <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#854d0e' }}>
+                    2. ຂໍ້ມູນແປພາສາຈີນ (GACC e-Phyto)
+                  </span>
+                </div>
+                {parsedOcr?.product_name ? (
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#713f12' }}>
+                      🇨🇳 {parsedOcr.product_name.zh || '新鲜阿拉比卡咖啡豆'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#854d0e' }}>
+                      🇬🇧 {parsedOcr.product_name.en || 'Fresh Arabica Coffee Beans'}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '12px', color: '#854d0e' }}>
+                    🇨🇳 新鲜阿拉比卡咖啡豆 (GACC Orchard Verified)
                   </div>
                 )}
               </div>
             </div>
 
-            {/* China GACC Translation Card */}
+            {/* STEP 2: Big Green Approve Button */}
             <div style={{
-              background: '#ffffff',
-              border: '1.5px solid #fde68a',
-              borderRadius: '8px',
-              padding: '18px'
+              borderTop: '1.5px solid #edf2e7',
+              paddingTop: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                <Languages size={18} color="#b45309" />
-                <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#b45309', margin: 0 }}>
-                  ໃບສຸຂານາໄມພືດແປພາສາຈີນ GACC
-                </h4>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#4d6052' }}>
+                Step 2: ກົດປຸ່ມດ້ານລຸ່ມເພື່ອບັນທຶກ <code>addVerificationLog</code> ບົນ Smart Contract ແລະ ປ່ອຍຜ່ານດ່ານ
               </div>
-              <div style={{ fontSize: '12px', color: '#78350f', lineHeight: 1.5 }}>
-                <div>ຊື່ພາສາຈີນ: <strong style={{ fontSize: '15px', color: '#92400e' }}>{parsedOcr?.product_name?.zh || '新鲜阿拉比卡咖啡豆'}</strong></div>
-                <div>ຊື່ອັງກິດ: <strong>{parsedOcr?.product_name?.en || 'Fresh Arabica Coffee Beans'}</strong></div>
-                <div style={{ fontSize: '11px', color: '#a16207', marginTop: '4px' }}>
-                  GACC Mohan Port Code: 5300 / Mohan-Boten Express
+
+              <button
+                type="button"
+                onClick={handleApproveClearance}
+                disabled={isApproving || isAlreadyCleared}
+                style={{
+                  width: '100%',
+                  maxWidth: '480px',
+                  padding: '15px 24px',
+                  background: isAlreadyCleared ? '#15803d' : '#16a34a',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: 900,
+                  cursor: isAlreadyCleared ? 'default' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  boxShadow: '0 4px 14px rgba(22, 163, 74, 0.35)',
+                  transition: 'all 0.18s ease'
+                }}
+              >
+                <CheckCircle2 size={20} />
+                <span>
+                  {isApproving
+                    ? 'ກຳລັງຢືນຢັນບົນ Smart Contract...'
+                    : isAlreadyCleared
+                    ? '✓ ອະນຸມັດຜ່ານດ່ານຮຽບຮ້ອຍ (Export Cleared)'
+                    : '✅ ອະນຸມັດຜ່ານດ່ານ (Approve Customs Clearance)'}
+                </span>
+              </button>
+
+              {onChainTxHash && (
+                <a
+                  href={`https://explorer.labchain.la/tx/${onChainTxHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11.5px',
+                    color: '#0284c7',
+                    textDecoration: 'none',
+                    fontWeight: 700
+                  }}
+                >
+                  <span>Transaction Hash: {onChainTxHash.substring(0, 12)}...{onChainTxHash.substring(54)}</span>
+                  <ExternalLink size={12} />
+                </a>
+              )}
+
+              {approvalResult && (
+                <div style={{
+                  background: '#f0fdf4',
+                  border: '1.5px solid #86efac',
+                  borderRadius: '6px',
+                  padding: '12px 18px',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  fontSize: '12px',
+                  color: '#166534',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '8px'
+                }}>
+                  <div>
+                    <strong>🚂 ຂະບວນລົດໄຟ:</strong> {approvalResult.trainNo} • <strong>Seal:</strong> {approvalResult.sealId}
+                  </div>
+                  <div>
+                    <strong>ເວລາອະນຸມັດ:</strong> {new Date().toLocaleTimeString()}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
           </div>
 
-          {/* STEP 2: Big Green Approval Button (MANDATORY in brief) */}
-          <div style={{
-            background: '#ffffff',
-            border: '2px solid #15803d',
-            borderRadius: '8px',
-            padding: '24px',
-            boxShadow: '0 6px 20px rgba(21, 128, 61, 0.1)',
-            textAlign: 'center'
-          }}>
-            <h3 style={{ fontSize: '17px', fontWeight: 900, color: '#153826', margin: '0 0 6px 0' }}>
-              ຂັ້ນຕອນທີ 2: ຢືນຢັນການກວດປ່ອຍຜ່ານດ່ານສາກົນ (Step 2: Customs Clearance Approval)
-            </h3>
-            <p style={{ fontSize: '12.5px', color: '#4d6052', margin: '0 auto 18px auto', maxWidth: '520px' }}>
-              ເມື່ອຂໍ້ມູນຖືກຕ້ອງຄົບຖ້ວນ, ເຈົ້າໜ້າທີ່ຈະກົດປຸ່ມອະນຸມັດເພື່ອປະທັບຕາດິຈິຕອນ ແລະ ປົດລັອກຊ່ອງທາງດ່ວນ Green Channel ຂຶ້ນລົດໄຟ ລາວ-ຈີນ.
-            </p>
-
-            {isAlreadyCleared && (
-              <div style={{
-                background: '#ecfdf5',
-                border: '1.5px solid #86efac',
-                borderRadius: '6px',
-                padding: '14px',
-                maxWidth: '480px',
-                margin: '0 auto 18px auto',
-                fontSize: '12.5px',
-                color: '#15803d',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                justifyContent: 'center'
-              }}>
-                <CheckCircle2 size={18} />
-                <span>
-                  <strong>ອະນຸມັດປ່ອຍຜ່ານດ່ານຮຽບຮ້ອຍແລ້ວ!</strong> (GACC Cleared)
-                </span>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={handleApproveClearance}
-              disabled={isApproving}
-              style={{
-                padding: '16px 36px',
-                background: '#15803d',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: 900,
-                cursor: isApproving ? 'not-allowed' : 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '10px',
-                boxShadow: '0 4px 14px rgba(21, 128, 61, 0.35)',
-                transition: 'all 0.2s'
-              }}
-            >
-              {isApproving ? (
-                <span>ກຳລັງປະທັບຕາດິຈິຕອນ...</span>
-              ) : (
-                <>
-                  <CheckCircle2 size={22} />
-                  <span>✅ ອະນຸມັດຜ່ານດ່ານ (Approve Customs Clearance)</span>
-                </>
-              )}
-            </button>
-          </div>
-
         </div>
-      ) : null}
+      )}
 
     </div>
   );
