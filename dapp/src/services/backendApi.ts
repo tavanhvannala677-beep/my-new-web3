@@ -3,7 +3,7 @@
  * Base URL: http://localhost:4001/api/v1
  */
 
-export const BACKEND_BASE_URL = 'http://localhost:4001/api/v1';
+export const BACKEND_BASE_URL = (import.meta as any).env?.VITE_BACKEND_API_URL || 'http://localhost:4001/api/v1';
 
 // 1. Register Batch
 export interface RegisterBatchPayload {
