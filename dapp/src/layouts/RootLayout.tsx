@@ -135,38 +135,6 @@ export const RootLayout: React.FC = () => {
           </nav>
         </div>
       </header>
-      
-      {/* Smart Contract & Network Status Strip */}
-      <div style={{
-        background: '#153826',
-        color: '#dcfce7',
-        fontSize: '11px',
-        padding: '5px 24px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '10px',
-        borderBottom: '1px solid #234d36'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <span>⛓️ <strong>Network:</strong> LAB Chain (Chain ID: 5222)</span>
-          <span>•</span>
-          <span>📜 <strong>Core Contract:</strong> <code style={{ color: '#ffffff', fontFamily: 'monospace' }}>{LAO_TRACEABILITY_ADDRESS}</code></span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span>RPC: <code style={{ color: '#86efac' }}>https://rpc.labchain.la</code></span>
-          <a
-            href={`https://explorer.labchain.la/address/${LAO_TRACEABILITY_ADDRESS}`}
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: '#86efac', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 700 }}
-          >
-            <span>Explorer</span>
-            <ExternalLink size={10} />
-          </a>
-        </div>
-      </div>
 
       {/* Main Routed Content */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -234,6 +202,38 @@ export const RootLayout: React.FC = () => {
 
         </div>
       </footer>
+
+      {/* Smart Contract & Network Status Strip (Positioned at Bottom) */}
+      <div style={{
+        background: '#153826',
+        color: '#dcfce7',
+        fontSize: '11px',
+        padding: '7px 24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '10px',
+        borderTop: '1px solid #234d36'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span>⛓️ <strong>Network:</strong> LAB Chain (Chain ID: 5222)</span>
+          <span>•</span>
+          <span>📜 <strong>Core Contract:</strong> <code style={{ color: '#ffffff', fontFamily: 'monospace' }}>{LAO_TRACEABILITY_ADDRESS}</code></span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span>RPC: <code style={{ color: '#86efac' }}>https://rpc.labchain.la</code></span>
+          <a
+            href={`https://explorer.labchain.la/address/${LAO_TRACEABILITY_ADDRESS}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: '#86efac', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 700 }}
+          >
+            <span>Explorer</span>
+            <ExternalLink size={10} />
+          </a>
+        </div>
+      </div>
     </div>
   );
 };
