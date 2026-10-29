@@ -1,3 +1,12 @@
+/**
+ * Lao National Single Traceability Platform — Web3 & AI Integration Layer
+ *
+ * Architecture:
+ * 1. Step 1 (Off-Chain AI): Autonomous satellite check via Python AI (Sentinel-2 NDVI / EUDR deforestation check)
+ * 2. Step 2 (On-Chain Notarization): Cryptographic registration on LAB Chain (Chain ID: 5222)
+ * 3. Step 3 (Supply Chain Actions): Batch consolidation, processing, and customs clearance notarization
+ */
+
 import {
   BrowserProvider,
   JsonRpcProvider,
@@ -23,6 +32,44 @@ import axios from "axios";
 // Base URL for Python AI Service (Port 5000)
 export const PYTHON_AI_BASE_URL =
   (import.meta as any).env?.VITE_PYTHON_AI_URL || "http://localhost:5000";
+
+/**
+ * Extracts human-readable error messages from ethers.js contract executions,
+ * user wallet rejections, and network timeout exceptions.
+ *
+ * @param err - Unknown error caught in try/catch block
+ * @returns Human-friendly error string in Lao and English
+ */
+export function extractContractError(err: unknown): string {
+  if (!err) return "Unknown error occurred";
+  const errObj = err as any;
+
+  // 1. User rejected in MetaMask
+  if (errObj.code === 4001 || errObj.code === "ACTION_REJECTED" || errObj.message?.includes("rejected")) {
+    return "User rejected transaction in wallet (ຜູ້ໃຊ້ຍົກເລີກການຢືນຢັນ)";
+  }
+
+  // 2. Insufficient funds
+  if (errObj.code === "INSUFFICIENT_FUNDS" || errObj.message?.includes("insufficient funds")) {
+    return "Insufficient LAB balance for gas fee (ຍອດເງິນ LAB ບໍ່ພຽງພໍຄ່າ Gas)";
+  }
+
+  // 3. Revert reason from contract
+  if (errObj.reason) {
+    return `Smart contract reverted: ${errObj.reason}`;
+  }
+
+  // 4. Short error message
+  if (errObj.shortMessage) {
+    return errObj.shortMessage;
+  }
+
+  if (errObj.message) {
+    return errObj.message.length > 120 ? `${errObj.message.substring(0, 120)}...` : errObj.message;
+  }
+
+  return String(err);
+}
 
 // Default public read-only RPC provider for LAB Chain
 export function getLabChainReadOnlyProvider(): JsonRpcProvider {
