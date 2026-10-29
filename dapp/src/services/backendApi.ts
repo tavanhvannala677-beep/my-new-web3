@@ -470,6 +470,9 @@ export async function fetchBatchFromBackend(batchId: string): Promise<BatchRespo
 
 /**
  * Helper to safely parse evidence_hash JSON (used for AI_CrossBorder_OCR)
+ *
+ * @param evidenceHash - JSON string or raw IPFS/GPS hash
+ * @returns ParsedEvidenceData containing multilingual names or raw_hash fallback
  */
 export function parseEvidenceHash(evidenceHash: string): ParsedEvidenceData {
   try {
@@ -479,3 +482,89 @@ export function parseEvidenceHash(evidenceHash: string): ParsedEvidenceData {
     return { raw_hash: evidenceHash };
   }
 }
+
+/**
+ * Validates whether a batch identifier adheres to the Lao National standard format.
+ * Format examples: BATCH-LAO-001, BATCH-PAKSONG-2026, BATCH-COFFEE-889
+ *
+ * @param batchId - The batch identifier string to validate
+ * @returns boolean indicating valid naming convention
+ */
+export function validateBatchIdFormat(batchId: string): boolean {
+  if (!batchId || typeof batchId !== "string") return false;
+  const regex = /^BATCH-[A-Z0-9_-]+$/i;
+  return regex.test(batchId.trim());
+}
+
+export interface BatchFilterOptions {
+  status?: string;
+  search?: string;
+}
+
+/**
+ * In-memory search and filter helper for batch collections.
+ * Supports filtering by status and searching across batch ID, product name, and farm location.
+ *
+ * @param batches - Array of BatchData records
+ * @param filter - Options containing status criteria and text search query
+ * @returns Filtered array of BatchData records
+ */
+export function filterBatches(batches: BatchData[], filter: BatchFilterOptions): BatchData[] {
+  if (!Array.isArray(batches)) return [];
+  const query = (filter.search || "").toLowerCase().trim();
+  const statusFilter = (filter.status || "").toLowerCase().trim();
+
+  return batches.filter((b) => {
+    // 1. Status match
+    if (statusFilter && statusFilter !== "all") {
+      if ((b.status || "").toLowerCase() !== statusFilter) {
+        return false;
+      }
+    }
+
+    // 2. Text search match
+    if (query) {
+      const matchId = (b.batch_id || "").toLowerCase().includes(query);
+      const matchProduct = (b.product_name || "").toLowerCase().includes(query);
+      const matchLoc = (b.farm_location || "").toLowerCase().includes(query);
+      const matchOwner = (b.owner || "").toLowerCase().includes(query);
+      return matchId || matchProduct || matchLoc || matchOwner;
+    }
+
+    return true;
+  });
+}
+
+/**
+ * Generates an immutable, printable JSON audit passport for Customs & Trade compliance.
+ *
+ * @param batch - The core BatchData record
+ * @param logs - Array of VerificationLog events recorded on-chain or off-chain
+ * @returns Pretty-formatted JSON string representation
+ */
+export function exportBatchSummaryAsJson(batch: BatchData, logs: VerificationLog[] = []): string {
+  const auditPassport = {
+    platform: "Lao National Single Traceability Platform (LaoTrace)",
+    standard: "EUDR / GACC Cross-Border Compliant",
+    generatedAt: new Date().toISOString(),
+    batch: {
+      batchId: batch.batch_id,
+      productName: batch.product_name,
+      status: batch.status,
+      farmLocation: batch.farm_location || "N/A",
+      owner: batch.owner,
+      quantityKg: batch.quantity || 0,
+      parentBatches: batch.parent_batches || []
+    },
+    verificationHistory: logs.map((log, index) => ({
+      sequence: index + 1,
+      timestamp: log.timestamp,
+      verifier: log.verifier,
+      action: log.action,
+      evidenceHash: log.evidence_hash
+    }))
+  };
+
+  return JSON.stringify(auditPassport, null, 2);
+}
+
