@@ -73,10 +73,42 @@ npm run dev
 ```
 ເປີດບຣາວເຊີໄປທີ່: `http://localhost:5175`
 
-### 4. Build ສຳລັບ Production
+### 4. ທົດສອບ ແລະ ກວດສອບຄຸນນະພາບໂຄ້ດ (Testing & Quality Assurance)
 ```bash
+# Run unit tests (Vitest)
+npm test
+
+# Type-check TypeScript without building
+npm run typecheck
+
+# Build for Production
 npm run build
 ```
+
+---
+
+## ⚙️ ການຕັ້ງຄ່າ Environment Variables (`.env`)
+
+ສ້າງໄຟລ໌ `.env` ໃນໂຟລເດີ `dapp/` ໂດຍອ້າງອີງຈາກ `.env.example`:
+
+| Variable | Default Value | Description |
+|---|---|---|
+| `VITE_CONTRACT_ADDRESS` | `0xee891fb89...` | ທີ່ຢູ່ Smart Contract ບົນ LAB Chain |
+| `VITE_CHAIN_ID` | `5222` | EVM Chain ID ຂອງ LAB Chain |
+| `VITE_RPC_URL` | `https://rpc.labchain.la` | RPC Endpoint ສຳລັບເຊື່ອມຕໍ່ບລັອກເຊນ |
+| `VITE_PYTHON_AI_URL` | `http://localhost:5000` | Microservice ວິເຄາະດາວທຽມ EUDR & OCR ແປພາສາ |
+| `VITE_BACKEND_API_URL` | `http://localhost:4001/api/v1` | Go Backend REST API |
+
+---
+
+## 🌐 ສະຖາປັດຕະຍະກຳ Microservices (Service Endpoints Matrix)
+
+| Service | Port / Protocol | ເປົ້າໝາຍການນຳໃຊ້ (Responsibility) |
+|---|---|---|
+| **Frontend DApp** | `http://localhost:5175` | React 19 SPA (Farmer, Factory, Customs Portals) |
+| **Go Backend API** | `http://localhost:4001` | Batch indexing, local storage, audit log caching |
+| **Python AI Engine** | `http://localhost:5000` | Sentinel-2 NDVI canopy score & e-Phyto OCR |
+| **LAB Chain RPC** | `https://rpc.labchain.la` | Consortium EVM Proof of Authority (PoA) |
 
 ---
 
