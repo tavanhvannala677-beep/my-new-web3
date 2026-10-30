@@ -93,3 +93,44 @@ export interface BatchItem {
   ipfsCid: string;
   createdAt: string;
 }
+
+/**
+ * Detailed Deforestation Due Diligence Report adhering to EU Regulation 2023/1115 (EUDR).
+ */
+export interface EudrAuditReport {
+  reportCid: string;
+  cutoffDate: '2020-12-31';
+  ndviScore: number;
+  canopyLossPercent: number;
+  confidenceLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+  protectedAreaOverlap: boolean;
+  esaSentinelTileId: string;
+  isDeforestationFree: boolean;
+  analysisTimestamp: string;
+}
+
+/**
+ * Cross-border railway logistics manifest for the Lao-China Railway freight corridor.
+ */
+export interface RailTransitManifest {
+  manifestNo: string;
+  trainNumber: string;
+  departureHub: 'Vientiane_South' | 'Thanaleng_Dry_Port' | 'Luang_Prabang';
+  destinationHub: 'Mohan' | 'Kunming';
+  containerSealNumber: string;
+  greenChannelPass: boolean;
+  departureTime: string;
+  estimatedArrival: string;
+}
+
+/**
+ * Standard agricultural HS code mapping for bilateral Lao-China customs declarations (GACC).
+ */
+export interface GaccCustomsCode {
+  hsCode: string;
+  cropCategory: CropType;
+  chineseTitle: string;
+  englishTitle: string;
+  tariffRatePercent: number;
+}
+
