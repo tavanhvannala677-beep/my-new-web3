@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Smartphone,
@@ -11,10 +11,17 @@ import {
   CheckCircle2,
   QrCode,
   Shield,
-  TrainTrack
+  TrainTrack,
+  BarChart3,
+  TrendingUp,
+  PackageCheck
 } from 'lucide-react';
+import { getSupplyChainStats } from '../services/mockData';
+import { formatWeight } from '../lib/format';
 
 export const PortalHub: React.FC = () => {
+  const stats = useMemo(() => getSupplyChainStats(), []);
+
   return (
     <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '40px 24px 60px 24px', width: '100%', boxSizing: 'border-box' }}>
       
@@ -65,6 +72,59 @@ export const PortalHub: React.FC = () => {
             <span>ກວດສອບຄວາມຈິງດຽວລະດັບຊາດ (Audit Trail)</span>
             <ArrowRight size={15} />
           </Link>
+        </div>
+      </div>
+
+      {/* Real-time National Supply Chain Overview Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+        border: '1.5px solid #a7f3d0',
+        borderRadius: '12px',
+        padding: '16px 22px',
+        marginBottom: '28px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '16px',
+        boxShadow: '0 2px 10px rgba(16, 185, 129, 0.08)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '8px',
+            background: '#10b981',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff'
+          }}>
+            <TrendingUp size={20} />
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              ສະຖິຕິລະບົບກວດສອບຍ້ອນກັບແຫ່ງຊາດ (Live Supply Chain Stats)
+            </div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#064e3b' }}>
+              {stats.totalBatches} ລັອດສິນຄ້າໃນລະບົບ • ປະລິມານລວມ {formatWeight(stats.totalVolumeKg)}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#065f46', fontWeight: 600 }}>
+            <ShieldCheck size={16} className="text-emerald-600" />
+            <span>EUDR ຜ່ານ: <strong>{stats.complianceRatePercent}%</strong></span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#065f46', fontWeight: 600 }}>
+            <PackageCheck size={16} className="text-emerald-600" />
+            <span>ຜ່ານດ່ານແລ້ວ: <strong>{stats.customsClearedBatches} ລັອດ</strong></span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#065f46', fontWeight: 600 }}>
+            <TrainTrack size={16} className="text-emerald-600" />
+            <span>ກຳລັງຂົນສົ່ງ: <strong>{stats.inTransitBatches} ລັອດ</strong></span>
+          </div>
         </div>
       </div>
 
