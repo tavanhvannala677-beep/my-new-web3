@@ -233,3 +233,107 @@ export async function simulateAI_PhytoOCR(file: File): Promise<ExtractedPhytoDoc
     isAiVerified: true
   };
 }
+
+/**
+ * Supply chain aggregate performance and compliance statistics.
+ */
+export interface SupplyChainStats {
+  totalBatches: number;
+  eudrCompliantBatches: number;
+  customsClearedBatches: number;
+  inTransitBatches: number;
+  totalVolumeKg: number;
+  complianceRatePercent: number;
+}
+
+/**
+ * Calculates national supply chain overview metrics across all tracked batches.
+ */
+export function getSupplyChainStats(): SupplyChainStats {
+  const batches = getStoredBatches();
+  const totalBatches = batches.length;
+  if (totalBatches === 0) {
+    return {
+      totalBatches: 0,
+      eudrCompliantBatches: 0,
+      customsClearedBatches: 0,
+      inTransitBatches: 0,
+      totalVolumeKg: 0,
+      complianceRatePercent: 100
+    };
+  }
+
+  const eudrCompliantBatches = batches.filter(b => b.eudrStatus?.isPassed).length;
+  const customsClearedBatches = batches.filter(b => b.status === 'CustomsCleared').length;
+  const inTransitBatches = batches.filter(b => b.status === 'InTransit').length;
+  const totalVolumeKg = batches.reduce((acc, b) => acc + (b.quantityKg || 0), 0);
+  const complianceRatePercent = Math.round((eudrCompliantBatches / totalBatches) * 100);
+
+  return {
+    totalBatches,
+    eudrCompliantBatches,
+    customsClearedBatches,
+    inTransitBatches,
+    totalVolumeKg,
+    complianceRatePercent
+  };
+}
+
+/**
+ * Updates status of an existing batch and records an immutable timeline log.
+ */
+export function updateBatchStatus(
+  batchId: string,
+  newStatus: BatchItem['status'],
+  newLog?: TimelineLogItem
+): boolean {
+  const batches = getStoredBatches();
+  const index = batches.findIndex(b => b.batchId.toLowerCase() === batchId.trim().toLowerCase());
+  if (index === -1) return false;
+
+  const target = { ...batches[index], status: newStatus };
+  if (newLog) {
+    target.timelineLogs = [...(target.timelineLogs || []), newLog];
+  }
+
+  batches[index] = target;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(batches));
+  } catch (err) {
+    console.warn('Could not persist updated batch to localStorage:', err);
+  }
+  return true;
+}
+
+/**
+ * Searches for batches registered by a specific farmer or cooperative.
+ */
+export function queryBatchesByFarmer(keyword: string): BatchItem[] {
+  if (!keyword || !keyword.trim()) return [];
+  const q = keyword.trim().toLowerCase();
+  const batches = getStoredBatches();
+
+  return batches.filter(b => {
+    const f = b.farmer;
+    if (!f) return false;
+    return (
+      f.name?.toLowerCase().includes(q) ||
+      f.phone?.includes(q) ||
+      f.village?.toLowerCase().includes(q) ||
+      f.district?.toLowerCase().includes(q) ||
+      f.province?.toLowerCase().includes(q)
+    );
+  });
+}
+
+/**
+ * Resets local storage batches back to the default seed dataset.
+ */
+export function resetStoredBatches(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_BATCHES));
+  } catch (err) {
+    console.warn('Could not reset stored batches:', err);
+  }
+}
+
