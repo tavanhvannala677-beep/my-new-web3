@@ -149,5 +149,27 @@ npm run build
 
 ---
 
+## 🩺 ການກວດສອບສະຖານະເຄືອຂ່າຍ & ການແກ້ໄຂບັນຫາ (Diagnostics & Troubleshooting)
+
+ລະບົບມີຕົວກວດສອບສະຖານະການເຊື່ອມຕໍ່ RPC ແລະ ການແປຂໍ້ຜິດພາດເປັນພາສາລາວອັດຕະໂນມັດ:
+
+### 1. ຕາຕະລາງການຈັດໝວດໝູ່ Error Codes
+
+| ປະເພດ (Category) | ລະຫັດ Error / ສາເຫດ | ຄຳອະທິບາຍ (Lao & English) | ວິທີແກ້ໄຂ (Remediation) |
+|---|---|---|---|
+| `USER_REJECTED` | `4001`, `ACTION_REJECTED` | ຜູ້ໃຊ້ຍົກເລີກການຢືນຢັນໃນ MetaMask | ກວດສອບລາຍລະອຽດແລ້ວກົດ Confirm ໃນກະເປົາເງິນອີກຄັ້ງ |
+| `INSUFFICIENT_FUNDS` | `INSUFFICIENT_FUNDS` | ຍອດເງິນ LAB ບໍ່ພຽງພໍຄ່າ Gas | ຮັບຫຼຽນ LAB ສຳລັບທົດສອບ ຫຼື ເຕີມແກັສເຂົ້າ Wallet |
+| `NETWORK_ERROR` | `TIMEOUT`, `Failed to fetch` | ບໍ່ສາມາດເຊື່ອມຕໍ່ RPC Endpoint ໄດ້ | ກວດສອບອິນເຕີເນັດ ຫຼື ລອງປ່ຽນ RPC URL ໃນ `.env` |
+| `CONTRACT_REVERT` | `CALL_EXCEPTION` | Smart Contract ປະຕິເສດເງື່ອນໄຂ | ກວດສອບສິດທິຜູ້ບັນທຶກ (Owner/Operator) ແລະ ຮູບແບບ Batch ID |
+| `NONCE_EXPIRED` | `NONCE_EXPIRED` | ເລກທຸລະກຳຊໍ້າຊ້ອນ | ລໍຖ້າທຸລະກຳກ່ອນໜ້າສຳເລັດ ຫຼື Reset Account ໃນ MetaMask |
+
+### 2. ຕົວຊີ້ວັດຄວາມໄວເຄືອຂ່າຍ (RPC Latency Benchmarks)
+
+* 🟢 **Optimal (<300ms):** ເຄືອຂ່າຍເຮັດວຽກປົກກະຕິ ພ້ອມບັນທຶກທຸລະກຳໄວ
+* 🟡 **Degraded (>300ms):** ສັນຍານອິນເຕີເນັດຊ້າ ຫຼື RPC ມີຄົນໃຊ້ງານຫຼາຍ
+* 🔴 **Offline:** ບໍ່ສາມາດຕິດຕໍ່ RPC Node ໄດ້ ລະບົບຈະສະຫຼັບໃຊ້ Mock Data ຊົ່ວຄາວ
+
+---
+
 ## 📄 License
 MIT License
