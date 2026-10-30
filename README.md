@@ -43,6 +43,31 @@
 
 ---
 
+## 🔄 ຂັ້ນຕອນການກວດສອບຍ້ອນກັບ 5 ໄລຍະ (5-Stage Verification Pipeline)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Farmer as 👨‍🌾 ຊາວກະສິກອນ
+    participant GIS as 🛰️ Sentinel-2 AI (EUDR)
+    actor Factory as 🏭 ໂຮງງານແປຮູບ
+    participant Chain as ⛓️ LAB Chain (EVM 5222)
+    actor Customs as 🛃 ດ່ານລົດໄຟ ລາວ-ຈີນ
+
+    Farmer->>GIS: ວາດຂອບເຂດແປງປູກ (GeoJSON)
+    GIS-->>Farmer: ຜົນວິເຄາະ NDVI (ບໍ່ຕັດໄມ້ທຳລາຍປ່າ)
+    Farmer->>Chain: ລົງທະບຽນລັອດສິນຄ້າ (registerBatch)
+    Factory->>Chain: ຮັບຊື້ ແລະ ລວມລັອດສົ່ງອອກ (splitOrMergeBatch)
+    Factory->>Customs: ສົ່ງເອກະສານ e-Phyto OCR ແປພາສາລາວ-ຈີນ
+    Customs->>Chain: ບັນທຶກໃບປ່ອຍຜ່ານສີຂຽວ (addVerificationLog)
+```
+
+### 🚂 ການເຊື່ອມໂຍງດ່ານລົດໄຟ ລາວ-ຈີນ (Lao-China Railway Green Channel)
+* **ຈຸດເຊື່ອມຕໍ່:** ສະຖານີວຽງຈັນໃຕ້ (Vientiane South) / ທ່າບົກທ່ານາແລ້ງ (Thanaleng Dry Port) ➡️ ດ່ານບໍ່ເຕັນ-ໂມ່ຫານ (Boten-Mohan Rail Port)
+* **ກວດສອບໄວ:** ພຽງແຕ່ສະແກນ QR Code ປະຈຳຕູ້ຄອນເທນເນີ ລະບົບຈະດຶງຂໍ້ມູນ Single Source of Truth (SSOT) ຈາກ Smart Contract ທັນທີ ຫຼຸດເວລາຜ່ານດ່ານຈາກ 48 ຊົ່ວໂມງ ເຫຼືອພຽງບໍ່ຮອດ 15 ນາທີ.
+
+---
+
 ## 🛠️ ເທັກໂນໂລຊີທີ່ນຳໃຊ້ (Tech Stack)
 
 * **Frontend:** React 19, TypeScript, Vite
