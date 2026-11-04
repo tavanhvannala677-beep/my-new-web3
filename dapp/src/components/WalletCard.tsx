@@ -1,6 +1,8 @@
 import type { NetworkConfig } from "../config/networks";
+import { getAddressExplorerUrl } from "../config/networks";
 import type { Wallet } from "../hooks/useWallet";
-import { Card, StatusLine } from "./ui";
+import { Badge, Card, CopyButton, StatusLine } from "./ui";
+import { ExternalLink } from "lucide-react";
 
 const isMobile = () => /Android|iPhone|iPad/i.test(navigator.userAgent);
 
@@ -22,11 +24,38 @@ export function WalletCard({ network, wallet, explorer }: { network: NetworkConf
       {wallet.account && (
         <dl className="kv" style={{ marginTop: 12 }}>
           <dt>Account</dt>
-          <dd className="mono">{wallet.account}</dd>
+          <dd className="mono" style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+            <span>{wallet.account}</span>
+            <CopyButton text={wallet.account} label="Copy" />
+            {explorer && (
+              <a
+                href={getAddressExplorerUrl(network, wallet.account)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View account on explorer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  fontSize: "12px",
+                  color: "#059669",
+                  textDecoration: "none",
+                  fontWeight: 600
+                }}
+              >
+                <span>Explorer</span>
+                <ExternalLink size={13} />
+              </a>
+            )}
+          </dd>
           <dt>Balance</dt>
           <dd>{wallet.balance ?? "—"}</dd>
           <dt>Wallet network</dt>
-          <dd>{wallet.onRightNetwork ? `${network.chainName} (${wallet.walletChainId}) ✓` : `Chain ID ${wallet.walletChainId ?? "?"}`}</dd>
+          <dd style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Badge variant={wallet.onRightNetwork ? "success" : "warning"}>
+              {wallet.onRightNetwork ? `${network.chainName} (${wallet.walletChainId}) ✓` : `Chain ID ${wallet.walletChainId ?? "?"}`}
+            </Badge>
+          </dd>
         </dl>
       )}
 
