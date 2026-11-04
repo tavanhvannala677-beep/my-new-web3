@@ -87,3 +87,16 @@ export interface Status {
 }
 
 export const IDLE: Status = { kind: "idle", message: "" };
+
+/**
+ * Safely parses a JSON string with a strongly typed fallback value if parsing throws.
+ */
+export function safeJsonParse<T>(jsonString: string | null | undefined, fallback: T): T {
+  if (!jsonString || typeof jsonString !== "string") return fallback;
+  try {
+    return JSON.parse(jsonString) as T;
+  } catch {
+    return fallback;
+  }
+}
+
