@@ -205,5 +205,18 @@ npm run build
 
 ---
 
+## ❓ ຄຳຖາມທີ່ພົບເລື້ອຍ (Frequently Asked Questions - FAQ)
+
+#### 1. ລະບົບສາມາດໃຊ້ງານແບບ Offline ໃນສວນທີ່ບໍ່ມີສັນຍານອິນເຕີເນັດໄດ້ຫຼືບໍ່?
+ໄດ້. ແອັບ Farmer App ຮອງຮັບ PWA (Progressive Web App) ພ້ອມ Local Caching ສາມາດວາດແຜນທີ່ ແລະ ບັນທຶກລັອດສິນຄ້າໄວ້ໃນເຄື່ອງກ່ອນ ແລ້ວລະບົບຈະ Sync ຂຶ້ນບລັອກເຊນເມື່ອມີສັນຍານ.
+
+#### 2. ດ່ານພາສີຈີນ (GACC) ກວດສອບຂໍ້ມູນຜ່ານຊ່ອງທາງໃດ?
+ເຈົ້າໜ້າທີ່ດ່ານສາກົນໂມ່ຫານສາມາດສະແກນ QR Code ບົນຕູ້ຄອນເທນເນີລົດໄຟ ເພື່ອເຂົ້າເບິ່ງ Single Source of Truth (SSOT) ທີ່ແປພາສາຈີນ ແລະ ຢັ້ງຢືນດ້ວຍ e-Phyto Certificate Hash ບົນ LAB Chain ທັນທີ.
+
+#### 3. ຂໍ້ມູນພາບຖ່າຍດາວທຽມ EUDR ຖືກເກັບໄວ້ຢູ່ໃສ?
+Metadata ແລະ ຜົນວິເຄາະ NDVI Score ຂອງດາວທຽມ Sentinel-2 ຈະຖືກເຂົ້າລະຫັດ Cryptographic Hash ແລ້ວບັນທຶກລົງ Smart Contract ສ່ວນໄຟລ໌ລາຍງານລະອຽດຈະຖືກເກັບໄວ້ບົນ IPFS.
+
+---
+
 ## 📄 License
 MIT License
