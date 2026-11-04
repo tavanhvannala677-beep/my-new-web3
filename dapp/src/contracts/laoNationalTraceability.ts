@@ -429,3 +429,92 @@ export interface OnChainVerificationLog {
   timestamp: bigint;
   evidenceHash: string;
 }
+
+/**
+ * Returns the English identifier for a smart contract BatchStatus enum value.
+ */
+export function getBatchStatusName(status: BatchStatus | number): string {
+  switch (status) {
+    case BatchStatus.Registered:
+      return "Registered";
+    case BatchStatus.Processed:
+      return "Processed";
+    case BatchStatus.InTransit:
+      return "InTransit";
+    case BatchStatus.ExportCleared:
+      return "ExportCleared";
+    case BatchStatus.Rejected:
+      return "Rejected";
+    default:
+      return "Unknown";
+  }
+}
+
+/**
+ * Returns the localized Lao label for a smart contract BatchStatus enum value.
+ */
+export function formatBatchStatusLaoFromEnum(status: BatchStatus | number): string {
+  switch (status) {
+    case BatchStatus.Registered:
+      return "ລົງທະບຽນແລ້ວ (Registered)";
+    case BatchStatus.Processed:
+      return "ໂຮງງານແປຮູບແລ້ວ (Processed)";
+    case BatchStatus.InTransit:
+      return "ກຳລັງຂົນສົ່ງ (In Transit)";
+    case BatchStatus.ExportCleared:
+      return "ຜ່ານດ່ານສຸລະກາກອນແລ້ວ (Export Cleared)";
+    case BatchStatus.Rejected:
+      return "ຖືກປະຕິເສດ (Rejected)";
+    default:
+      return "ບໍ່ຮູ້ສະຖານະ (Unknown)";
+  }
+}
+
+/**
+ * Returns the English identifier for a smart contract TraceType enum value.
+ */
+export function getTraceTypeName(traceType: TraceType | number): string {
+  switch (traceType) {
+    case TraceType.IdentityPreserved:
+      return "IdentityPreserved";
+    case TraceType.MassBalance:
+      return "MassBalance";
+    case TraceType.IndividualTrace:
+      return "IndividualTrace";
+    default:
+      return "Unknown";
+  }
+}
+
+/**
+ * Returns the localized Lao label and crop suitability description for a TraceType.
+ */
+export function formatTraceTypeLao(traceType: TraceType | number): string {
+  switch (traceType) {
+    case TraceType.IdentityPreserved:
+      return "ແຍກແຫຼ່ງປູກດ່ຽວ (Identity Preserved - ກາເຟ/ຢາງພາຣາ)";
+    case TraceType.MassBalance:
+      return "ລວມລັອດການຜະລິດ (Mass Balance - ມັນຕົ້ນ/ອ້ອຍ)";
+    case TraceType.IndividualTrace:
+      return "ຕິດຕາມລາຍຕົວ (Individual Trace - ສັດລ້ຽງ)";
+    default:
+      return "ຮູບແບບທົ່ວໄປ (Standard Trace)";
+  }
+}
+
+/**
+ * Validates whether a numeric value is a valid TraceType enum member.
+ */
+export function isValidTraceType(traceType: number): boolean {
+  return traceType === TraceType.IdentityPreserved ||
+         traceType === TraceType.MassBalance ||
+         traceType === TraceType.IndividualTrace;
+}
+
+/**
+ * Validates whether a numeric value is a valid BatchStatus enum member.
+ */
+export function isValidBatchStatus(status: number): boolean {
+  return status >= BatchStatus.Registered && status <= BatchStatus.Rejected;
+}
+
