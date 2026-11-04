@@ -39,6 +39,17 @@ export const toHexChainId = (chainId: number): string => "0x" + chainId.toString
 
 export const explorerUrl = (network: NetworkConfig): string => network.blockExplorerUrls[0] ?? "";
 
+/** Network performance benchmark thresholds in milliseconds */
+export const LATENCY_THRESHOLDS = {
+  OPTIMAL: 300,
+  DEGRADED: 1000,
+  TIMEOUT: 5000
+} as const;
+
+/** Default polling interval for blockchain head block and gas price in milliseconds */
+export const DEFAULT_RPC_POLL_INTERVAL_MS = 6000;
+
+
 /**
  * Generates an explorer link for a transaction hash if an explorer is configured.
  */
