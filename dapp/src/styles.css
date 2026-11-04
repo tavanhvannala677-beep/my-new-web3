@@ -195,3 +195,22 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   color: #065f46;
   border-color: #6ee7b7;
 }
+
+/* Print optimization for Customs Certificate of Origin and Inspection Reports */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print, nav, footer, button, .ui-copy-btn {
+    display: none !important;
+  }
+}
+
+/* User preference: smooth scrolling */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
