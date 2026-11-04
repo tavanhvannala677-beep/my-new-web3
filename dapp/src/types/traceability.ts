@@ -134,3 +134,22 @@ export interface GaccCustomsCode {
   tariffRatePercent: number;
 }
 
+/**
+ * Sort direction for tabular views and audit event logs.
+ */
+export type SortDirection = 'asc' | 'desc';
+
+/**
+ * Filter and pagination state for batch management views.
+ */
+export interface BatchQueryState {
+  searchQuery: string;
+  statusFilter: BatchStatus | 'ALL';
+  cropFilter: CropType | 'ALL';
+  sortBy: 'createdAt' | 'quantityKg' | 'batchId';
+  sortDirection: SortDirection;
+  page: number;
+  pageSize: number;
+}
+
+
