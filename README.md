@@ -112,6 +112,40 @@ npm run build
 
 ---
 
+---
+
+## 🌾 ຮູບແບບການກວດສອບຍ້ອນກັບ 3 ແບບ (Traceability Models)
+
+ລະບົບຮອງຮັບ 3 ໂມເດວການກວດສອບຍ້ອນກັບຕາມມາດຕະຖານສາກົນ ISO 22095 ແລະ ກົດລະບຽບ EUDR:
+
+| ຮູບແບບ (Model) | Enum Value | ພືດ / ສິນຄ້າທີ່ເໝາະສົມ | ຄຸນລັກສະນະຫຼັກ (Core Characteristics) |
+|---|---|---|---|
+| **Identity Preserved (IP)** | `0` | ກາເຟອາຣາບິກາ, ຢາງພາຣາພິເສດ | ແຍກແຫຼ່ງປູກດ່ຽວ 100% ຜູກຕິດກັບພິກັດດາວທຽມ GeoJSON ບໍ່ປົນກັບແປງອື່ນ |
+| **Mass Balance (MB)** | `1` | ຫົວມັນຕົ້ນ, ມັນຕົ້ນເສັ້ນ, ອ້ອຍ | ອະນຸຍາດໃຫ້ລວມຫຼາຍແປງຍ່ອຍ (Batch Consolidation) ພາຍໃຕ້ອັດຕາສ່ວນທີ່ກວດສອບໄດ້ |
+| **Individual Trace (IT)** | `2` | ງົວຊີ້ນ, ຄວາຍ (RFID Ear Tag) | ຕິດຕາມສັດລ້ຽງລາຍຕົວ ພ້ອມປະຫວັດການສັກຢາວັກຊີນ ແລະ ໃບຢັ້ງຢືນສັດຕະວະແພດ |
+
+---
+
+## 📜 Smart Contract Functions & Events (`LaoNationalTraceability.sol`)
+
+ສັນຍາອັດສະລິຍະຫຼັກຖືກ Deployed ບົນ **LAB Chain (5222)**:
+* **Contract Address:** `0xee891fb89CaD3D643a029fF6b4BD0addc6E4d8Cc`
+
+### 1. ຟັງຊັນຫຼັກ (Core Functions)
+* `registerBatch(string _batchId, uint8 _traceType, string _productType, uint256 _quantity, string _offChainDataHash, address _targetFactory)`
+  * ໃຊ້ໂດຍຊາວກະສິກອນ ຫຼື ສະຫະກອນ ເພື່ອລົງທະບຽນລັອດສິນຄ້າພ້ອມຜົນວິເຄາະດາວທຽມ
+* `splitOrMergeBatch(string _newBatchId, string[] _parentBatches, string _productType, uint256 _newQuantity, string _newOffChainDataHash, address _targetFactory)`
+  * ໃຊ້ໂດຍໂຮງງານແປຮູບ ເພື່ອລວມຫຼາຍລັອດ (Consolidation) ຫຼື ແບ່ງລັອດສົ່ງອອກ
+* `addVerificationLog(string _batchId, string _action, string _evidenceHash, uint8 _newStatus)`
+  * ໃຊ້ໂດຍດ່ານພາສີ ແລະ ລະບົບ AI ເພື່ອບັນທຶກ Audit Log ທີ່ບໍ່ສາມາດແກ້ໄຂໄດ້ (Immutable Proof)
+
+### 2. ເຫດການບົນບລັອກເຊນ (Blockchain Events)
+* `event BatchRegistered(string indexed batchId, address indexed operator, address indexed targetFactory, uint8 traceType, uint256 timestamp)`
+* `event BatchConsolidated(string indexed newBatchId, string[] parentBatches, address indexed factory, uint256 timestamp)`
+* `event VerificationLogAdded(string indexed batchId, address indexed verifier, string action, string evidenceHash, uint8 newStatus, uint256 timestamp)`
+
+---
+
 ## ⚙️ ການຕັ້ງຄ່າ Environment Variables (`.env`)
 
 ສ້າງໄຟລ໌ `.env` ໃນໂຟລເດີ `dapp/` ໂດຍອ້າງອີງຈາກ `.env.example`:
