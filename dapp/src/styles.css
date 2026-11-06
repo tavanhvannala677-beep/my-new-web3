@@ -16,6 +16,14 @@
   --text-light: #708375;
   --border-subtle: #d5dfce;
   --border-strong: #c2cfba;
+  --accent-emerald-light: #10b981;
+  --accent-emerald-subtle: #d1fae5;
+  --badge-success-bg: #ecfdf5;
+  --badge-success-text: #065f46;
+  --badge-warning-bg: #fffbeb;
+  --badge-warning-text: #92400e;
+  --badge-danger-bg: #fef2f2;
+  --badge-danger-text: #991b1b;
   --radius-pill: 8px;
   --radius-card: 8px;
   --radius-sm: 4px;
