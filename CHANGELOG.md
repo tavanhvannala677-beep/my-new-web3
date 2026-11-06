@@ -2,6 +2,13 @@
 
 All notable changes to the **LaoTrace** platform are documented in this file.
 
+## [1.3.0] - 2026-11-06
+### Added
+- Organic Sage and Forest Green color palette tokens and documentation in `docs/THEME.md`.
+- High-contrast mode optimizations and border glow styling in `styles.css`.
+- Relative luminance and contrast helper (`isDarkColor`) with unit tests in `lib/format.ts`.
+- Tactile button transitions, active press states, and customized scrollbar aesthetics.
+
 ## [1.2.0] - 2026-11-05
 ### Added
 - Architecture guide and system flow diagram in `docs/ARCHITECTURE.md`.
