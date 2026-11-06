@@ -231,3 +231,23 @@ button:active:not(:disabled) {
   }
 }
 
+/* High-contrast mode optimizations for outdoor field visibility */
+.high-contrast-mode {
+  --bg-primary: #ffffff !important;
+  --bg-secondary: #f0f0f0 !important;
+  --bg-card: #ffffff !important;
+  --text-main: #000000 !important;
+  --text-muted: #1a1a1a !important;
+  --border-subtle: #000000 !important;
+  --border-strong: #000000 !important;
+  --forest-dark: #000000 !important;
+}
+
+.high-contrast-mode .card,
+.high-contrast-mode button,
+.high-contrast-mode input {
+  border-width: 2px !important;
+  border-color: #000000 !important;
+}
+
+
