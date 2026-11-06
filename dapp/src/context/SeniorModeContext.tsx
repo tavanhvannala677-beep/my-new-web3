@@ -5,6 +5,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
  * Supports larger fonts, simplified controls, high-contrast visibility under outdoor sunlight,
  * and audio guidance prompts.
  */
+export type ColorTheme = 'high-contrast' | 'organic-sage';
+
 interface SeniorModeContextType {
   isSeniorMode: boolean;
   toggleSeniorMode: () => void;
@@ -13,6 +15,7 @@ interface SeniorModeContextType {
   fontSizeScale: number;
   audioGuidanceEnabled: boolean;
   toggleAudioGuidance: () => void;
+  colorTheme: ColorTheme;
 }
 
 const SeniorModeContext = createContext<SeniorModeContextType>({
@@ -23,6 +26,7 @@ const SeniorModeContext = createContext<SeniorModeContextType>({
   fontSizeScale: 1.25,
   audioGuidanceEnabled: false,
   toggleAudioGuidance: () => {},
+  colorTheme: 'organic-sage',
 });
 
 export const SeniorModeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -77,6 +81,7 @@ export const SeniorModeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const toggleAudioGuidance = () => setAudioGuidanceEnabled(prev => !prev);
 
   const fontSizeScale = isSeniorMode ? 1.25 : 1.0;
+  const colorTheme: ColorTheme = isHighContrast ? 'high-contrast' : 'organic-sage';
 
   return (
     <SeniorModeContext.Provider
@@ -88,6 +93,7 @@ export const SeniorModeProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         fontSizeScale,
         audioGuidanceEnabled,
         toggleAudioGuidance,
+        colorTheme,
       }}
     >
       {children}
