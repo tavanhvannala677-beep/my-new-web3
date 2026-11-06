@@ -131,6 +131,16 @@ button:active:not(:disabled) {
   background-color: #f8fafc !important;
 }
 
+/* Card container elevation and hover polish */
+.card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 4px 16px rgba(20, 42, 29, 0.08);
+}
+
 /* UI Badge and CopyButton Components */
 .ui-badge {
   display: inline-flex;
