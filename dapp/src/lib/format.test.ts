@@ -6,7 +6,9 @@ import {
   formatDate,
   formatCoordinates,
   formatWeight,
-  formatBatchStatusLao
+  formatBatchStatusLao,
+  safeJsonParse,
+  isDarkColor
 } from "./format";
 
 describe("isUint", () => {
@@ -87,3 +89,36 @@ describe("formatBatchStatusLao", () => {
     expect(formatBatchStatusLao("CustomStatus")).toBe("CustomStatus");
   });
 });
+
+describe("safeJsonParse", () => {
+  it("parses valid JSON strings", () => {
+    expect(safeJsonParse('{"ok": true}', {})).toEqual({ ok: true });
+    expect(safeJsonParse('[1, 2, 3]', [])).toEqual([1, 2, 3]);
+  });
+
+  it("returns fallback for invalid or empty inputs", () => {
+    expect(safeJsonParse('not-a-json', { fallback: true })).toEqual({ fallback: true });
+    expect(safeJsonParse(null, 'default')).toBe('default');
+    expect(safeJsonParse('', 42)).toBe(42);
+  });
+});
+
+describe("isDarkColor", () => {
+  it("identifies dark colors correctly", () => {
+    expect(isDarkColor("#000000")).toBe(true);
+    expect(isDarkColor("#153826")).toBe(true); // Forest dark
+    expect(isDarkColor("#142a1d")).toBe(true); // Text main
+  });
+
+  it("identifies light colors correctly", () => {
+    expect(isDarkColor("#ffffff")).toBe(false);
+    expect(isDarkColor("#edf2e7")).toBe(false); // BG primary
+    expect(isDarkColor("#fff")).toBe(false);
+  });
+
+  it("handles malformed hex strings gracefully", () => {
+    expect(isDarkColor("not-a-color")).toBe(false);
+    expect(isDarkColor("")).toBe(false);
+  });
+});
+
