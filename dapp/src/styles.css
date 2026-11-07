@@ -276,5 +276,35 @@ button:active:not(:disabled) {
   animation: eudrPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* Table custom styling for audit logs and batch manifests */
+.table-custom {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.table-custom th {
+  background: linear-gradient(180deg, #f8fafc 0%, var(--bg-secondary) 100%);
+  color: var(--forest-dark);
+  font-weight: 700;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1.5px solid var(--border-strong);
+}
+
+.table-custom td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color 0.15s ease;
+}
+
+.table-custom tr:hover td {
+  background-color: rgba(226, 235, 217, 0.45);
+}
+
+
 
 
