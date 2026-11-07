@@ -184,6 +184,18 @@ button:active:not(:disabled) {
   border: 1px solid #e2e8f0;
 }
 
+.ui-badge-gold {
+  background-color: #fef3c7;
+  color: #78350f;
+  border: 1px solid #fcd34d;
+}
+
+.ui-badge-cyan {
+  background-color: #ecfeff;
+  color: #155e75;
+  border: 1px solid #a5f3fc;
+}
+
 .ui-badge-icon {
   display: inline-flex;
   align-items: center;
