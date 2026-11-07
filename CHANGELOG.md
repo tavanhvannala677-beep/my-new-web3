@@ -2,6 +2,14 @@
 
 All notable changes to the **LaoTrace** platform are documented in this file.
 
+## [1.4.0] - 2026-11-07
+### Added
+- Golden badge styling for GACC Bilateral Fast-Pass verification in `styles.css`.
+- Cyan badge variant for Sentinel-2 satellite and GIS telemetry displays.
+- Pulsing animated border effect (`eudrPulse`) for active deforestation verifications.
+- Hex-to-RGBA color converter helper (`hexToRgba`) with unit tests in `lib/format.ts`.
+- Badge color semantic specification matrix in `docs/THEME.md`.
+
 ## [1.3.0] - 2026-11-06
 ### Added
 - Organic Sage and Forest Green color palette tokens and documentation in `docs/THEME.md`.
