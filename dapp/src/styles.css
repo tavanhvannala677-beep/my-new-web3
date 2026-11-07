@@ -152,6 +152,12 @@ button:active:not(:disabled) {
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.ui-badge:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.97);
 }
 
 .ui-badge-success {
