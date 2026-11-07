@@ -8,7 +8,8 @@ import {
   formatWeight,
   formatBatchStatusLao,
   safeJsonParse,
-  isDarkColor
+  isDarkColor,
+  hexToRgba
 } from "./format";
 
 describe("isUint", () => {
@@ -121,4 +122,24 @@ describe("isDarkColor", () => {
     expect(isDarkColor("")).toBe(false);
   });
 });
+
+describe("hexToRgba", () => {
+  it("converts 6-digit hex color with default alpha 1", () => {
+    expect(hexToRgba("#ffffff")).toBe("rgba(255, 255, 255, 1)");
+    expect(hexToRgba("#000000")).toBe("rgba(0, 0, 0, 1)");
+    expect(hexToRgba("#10b981", 0.5)).toBe("rgba(16, 185, 129, 0.5)");
+  });
+
+  it("converts 3-digit hex color shorthand", () => {
+    expect(hexToRgba("#fff")).toBe("rgba(255, 255, 255, 1)");
+    expect(hexToRgba("#000", 0.8)).toBe("rgba(0, 0, 0, 0.8)");
+  });
+
+  it("handles alpha clamping and invalid input gracefully", () => {
+    expect(hexToRgba("#ffffff", 1.5)).toBe("rgba(255, 255, 255, 1)");
+    expect(hexToRgba("#ffffff", -0.5)).toBe("rgba(255, 255, 255, 0)");
+    expect(hexToRgba("bad-hex")).toBe("rgba(0, 0, 0, 1)");
+  });
+});
+
 
