@@ -125,4 +125,29 @@ export function isDarkColor(hexColor: string): boolean {
   return luminance < 0.5;
 }
 
+/**
+ * Converts a 3 or 6-digit hex color into an `rgba(r, g, b, alpha)` string.
+ * Defaults to alpha=1 if not specified or clamped between 0 and 1.
+ */
+export function hexToRgba(hexColor: string, alpha: number = 1): string {
+  if (!hexColor || typeof hexColor !== "string") return "rgba(0, 0, 0, 1)";
+  const hex = hexColor.replace("#", "").trim();
+  if (hex.length !== 3 && hex.length !== 6) return "rgba(0, 0, 0, 1)";
+
+  let r: number, g: number, b: number;
+  if (hex.length === 3) {
+    r = parseInt(hex[0] + hex[0], 16);
+    g = parseInt(hex[1] + hex[1], 16);
+    b = parseInt(hex[2] + hex[2], 16);
+  } else {
+    r = parseInt(hex.substring(0, 2), 16);
+    g = parseInt(hex.substring(2, 4), 16);
+    b = parseInt(hex.substring(4, 6), 16);
+  }
+
+  const safeAlpha = Math.max(0, Math.min(1, isNaN(alpha) ? 1 : alpha));
+  return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
+}
+
+
 
