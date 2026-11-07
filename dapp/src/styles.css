@@ -305,6 +305,16 @@ button:active:not(:disabled) {
   background-color: rgba(226, 235, 217, 0.45);
 }
 
+/* Golden highlight styling for GACC Bilateral Fast-Pass Verified */
+.badge-gacc-gold {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  color: #78350f !important;
+  border: 1px solid #f59e0b !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 4px rgba(245, 158, 11, 0.2);
+}
+
+
 
 
 
