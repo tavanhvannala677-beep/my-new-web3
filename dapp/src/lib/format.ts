@@ -149,5 +149,17 @@ export function hexToRgba(hexColor: string, alpha: number = 1): string {
   return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
 }
 
+/**
+ * Converts RGB numerical components (0-255) to a standard 6-character hex color string.
+ * Clamps input values to [0, 255] and handles non-integer numbers gracefully.
+ * e.g., rgbToHex(16, 185, 129) => "#10b981"
+ */
+export function rgbToHex(r: number, g: number, b: number): string {
+  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(isNaN(v) ? 0 : v)));
+  const toHex = (v: number) => clamp(v).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+
 
 
