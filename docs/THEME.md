@@ -30,4 +30,6 @@ For rural farmers operating mobile devices under direct outdoor sunlight, the pl
 | `cyan` | `.ui-badge-cyan` | `#ecfeff` / `#155e75` | Sentinel-2 Satellite / GIS |
 | `warning` | `.ui-badge-warning` | `#fffbeb` / `#92400e` | In-transit / Pending verification |
 | `danger` | `.ui-badge-danger` | `#fef2f2` / `#991b1b` | Deforestation detected / Rejected |
+| `purple` | `.ui-badge-purple` | `#faf5ff` / `#6b21a8` | Livestock & RFID Biosecurity Track |
+| `rose` | `.ui-badge-rose` | `#fff1f2` / `#9f1239` | Critical Quarantine / High Priority Alert |
 
