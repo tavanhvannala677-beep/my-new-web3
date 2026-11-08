@@ -384,6 +384,14 @@ button:active:not(:disabled) {
   box-shadow: 0 8px 32px 0 rgba(20, 42, 29, 0.12);
 }
 
+/* Native form control accent color customization */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--forest-dark);
+  cursor: pointer;
+}
+
+
 
 
 
