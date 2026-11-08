@@ -332,6 +332,15 @@ button:active:not(:disabled) {
   box-shadow: 0 1px 4px rgba(245, 158, 11, 0.2);
 }
 
+/* Gradient typography accent for national portal branding */
+.text-gradient-emerald {
+  background: linear-gradient(135deg, #153826 0%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+
 
 
 
