@@ -9,7 +9,8 @@ import {
   formatBatchStatusLao,
   safeJsonParse,
   isDarkColor,
-  hexToRgba
+  hexToRgba,
+  rgbToHex
 } from "./format";
 
 describe("isUint", () => {
@@ -141,5 +142,25 @@ describe("hexToRgba", () => {
     expect(hexToRgba("bad-hex")).toBe("rgba(0, 0, 0, 1)");
   });
 });
+
+describe("rgbToHex", () => {
+  it("converts standard RGB values to hex string", () => {
+    expect(rgbToHex(255, 255, 255)).toBe("#ffffff");
+    expect(rgbToHex(0, 0, 0)).toBe("#000000");
+    expect(rgbToHex(16, 185, 129)).toBe("#10b981");
+    expect(rgbToHex(21, 56, 38)).toBe("#153826");
+  });
+
+  it("clamps values outside 0-255 range", () => {
+    expect(rgbToHex(-10, 300, 100)).toBe("#00ff64");
+    expect(rgbToHex(-50, -20, 999)).toBe("#0000ff");
+  });
+
+  it("handles floating point and NaN inputs safely", () => {
+    expect(rgbToHex(254.8, 12.2, 0)).toBe("#ff0c00");
+    expect(rgbToHex(NaN, NaN, NaN)).toBe("#000000");
+  });
+});
+
 
 
