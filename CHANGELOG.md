@@ -2,6 +2,16 @@
 
 All notable changes to the **LaoTrace** platform are documented in this file.
 
+## [1.5.0] - 2026-11-08
+### Added
+- Gradient text accent utility (`.gradient-text-accent`) for national portal branding in `styles.css`.
+- Shimmer loading skeleton effect (`.skeleton-loading`) for async card views.
+- Glassmorphism modal backdrop and frosted card styles (`.glass-card`, `.modal-backdrop-blur`).
+- Purple and Rose compliance badge variants in `Badge` component and `styles.css`.
+- RGB to HEX color converter (`rgbToHex`) with complete unit test coverage in `lib/format.ts`.
+- Native checkbox and radio input accent colors with forest dark branding.
+- Livestock & biosecurity badge semantics in `docs/THEME.md`.
+
 ## [1.4.0] - 2026-11-07
 ### Added
 - Golden badge styling for GACC Bilateral Fast-Pass verification in `styles.css`.
