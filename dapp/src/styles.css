@@ -357,6 +357,22 @@ button:active:not(:disabled) {
   border-radius: var(--radius-sm);
 }
 
+/* Glassmorphism modal backdrop and container */
+.modal-backdrop-blur {
+  background: rgba(20, 42, 29, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px 0 rgba(20, 42, 29, 0.12);
+}
+
+
 
 
 
