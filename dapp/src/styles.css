@@ -202,6 +202,18 @@ button:active:not(:disabled) {
   border: 1px solid #a5f3fc;
 }
 
+.ui-badge-purple {
+  background-color: #faf5ff;
+  color: #6b21a8;
+  border: 1px solid #e9d5ff;
+}
+
+.ui-badge-rose {
+  background-color: #fff1f2;
+  color: #9f1239;
+  border: 1px solid #fecdd3;
+}
+
 .ui-badge-icon {
   display: inline-flex;
   align-items: center;
