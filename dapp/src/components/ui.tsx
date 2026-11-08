@@ -46,7 +46,7 @@ export function StatusLine({ status, explorer }: { status: Status; explorer: str
   );
 }
 
-export type BadgeVariant = "success" | "warning" | "info" | "danger" | "neutral" | "gold" | "cyan";
+export type BadgeVariant = "success" | "warning" | "info" | "danger" | "neutral" | "gold" | "cyan" | "purple" | "rose";
 
 /**
  * Accessible pill badge component for tags, verification states, and metadata flags.
