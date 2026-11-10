@@ -10,7 +10,8 @@ import {
   safeJsonParse,
   isDarkColor,
   hexToRgba,
-  rgbToHex
+  rgbToHex,
+  adjustBrightness
 } from "./format";
 
 describe("isUint", () => {
@@ -161,6 +162,30 @@ describe("rgbToHex", () => {
     expect(rgbToHex(NaN, NaN, NaN)).toBe("#000000");
   });
 });
+
+describe("adjustBrightness", () => {
+  it("lightens a dark color when given positive percentage", () => {
+    const lightened = adjustBrightness("#000000", 50);
+    expect(lightened).toBe("#808080");
+  });
+
+  it("darkens a light color when given negative percentage", () => {
+    const darkened = adjustBrightness("#ffffff", -50);
+    expect(darkened).toBe("#808080");
+  });
+
+  it("handles shorthand 3-digit hex strings", () => {
+    expect(adjustBrightness("#fff", 0)).toBe("#ffffff");
+    expect(adjustBrightness("#000", 100)).toBe("#ffffff");
+  });
+
+  it("clamps to bounds and handles invalid hex input", () => {
+    expect(adjustBrightness("#ffffff", 50)).toBe("#ffffff");
+    expect(adjustBrightness("#000000", -50)).toBe("#000000");
+    expect(adjustBrightness("invalid", 20)).toBe("#000000");
+  });
+});
+
 
 
 
