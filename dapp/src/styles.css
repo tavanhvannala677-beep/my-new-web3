@@ -158,6 +158,12 @@ button:active:not(:disabled) {
 .ui-badge:hover {
   transform: translateY(-1px);
   filter: brightness(0.97);
+  box-shadow: 0 2px 4px rgba(20, 42, 29, 0.08);
+}
+
+.ui-badge:focus-visible {
+  outline: 2px solid var(--forest-dark);
+  outline-offset: 1px;
 }
 
 .ui-badge-success {
