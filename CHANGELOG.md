@@ -2,6 +2,16 @@
 
 All notable changes to the **LaoTrace** platform are documented in this file.
 
+## [1.6.0] - 2026-11-10
+### Added
+- Indigo and Sky compliance badge variants for cold chain and irrigation in `styles.css`.
+- Support for `indigo` and `sky` variants in the `Badge` component.
+- Brand-aware text selection highlight colors (`::selection`, `::-moz-selection`).
+- Subtle hover shadow elevation and accessible focus rings for badge components.
+- Brightness percentage adjustment utility (`adjustBrightness`) with unit tests in `lib/format.ts`.
+- Hex-to-HSL color space converter (`hexToHsl`) with unit tests in `lib/format.ts`.
+- Design token documentation for new badge variants and selection highlights in `docs/THEME.md`.
+
 ## [1.5.0] - 2026-11-08
 ### Added
 - Gradient text accent utility (`.gradient-text-accent`) for national portal branding in `styles.css`.
