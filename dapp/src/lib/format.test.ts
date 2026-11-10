@@ -11,7 +11,8 @@ import {
   isDarkColor,
   hexToRgba,
   rgbToHex,
-  adjustBrightness
+  adjustBrightness,
+  hexToHsl
 } from "./format";
 
 describe("isUint", () => {
@@ -185,6 +186,25 @@ describe("adjustBrightness", () => {
     expect(adjustBrightness("invalid", 20)).toBe("#000000");
   });
 });
+
+describe("hexToHsl", () => {
+  it("converts pure white and pure black correctly", () => {
+    expect(hexToHsl("#ffffff")).toEqual({ h: 0, s: 0, l: 100 });
+    expect(hexToHsl("#000000")).toEqual({ h: 0, s: 0, l: 0 });
+  });
+
+  it("converts pure primary colors (red, green, blue)", () => {
+    expect(hexToHsl("#ff0000")).toEqual({ h: 0, s: 100, l: 50 });
+    expect(hexToHsl("#00ff00")).toEqual({ h: 120, s: 100, l: 50 });
+    expect(hexToHsl("#0000ff")).toEqual({ h: 240, s: 100, l: 50 });
+  });
+
+  it("handles 3-character hex and invalid values", () => {
+    expect(hexToHsl("#fff")).toEqual({ h: 0, s: 0, l: 100 });
+    expect(hexToHsl("invalid")).toEqual({ h: 0, s: 0, l: 0 });
+  });
+});
+
 
 
 
