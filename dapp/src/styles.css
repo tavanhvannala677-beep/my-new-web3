@@ -404,6 +404,18 @@ input[type="radio"] {
   cursor: pointer;
 }
 
+/* Brand-aware text selection highlight */
+::selection {
+  background-color: #bbf7d0;
+  color: #142a1d;
+}
+
+::-moz-selection {
+  background-color: #bbf7d0;
+  color: #142a1d;
+}
+
+
 
 
 
