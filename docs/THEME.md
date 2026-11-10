@@ -32,4 +32,11 @@ For rural farmers operating mobile devices under direct outdoor sunlight, the pl
 | `danger` | `.ui-badge-danger` | `#fef2f2` / `#991b1b` | Deforestation detected / Rejected |
 | `purple` | `.ui-badge-purple` | `#faf5ff` / `#6b21a8` | Livestock & RFID Biosecurity Track |
 | `rose` | `.ui-badge-rose` | `#fff1f2` / `#9f1239` | Critical Quarantine / High Priority Alert |
+| `indigo` | `.ui-badge-indigo` | `#eef2ff` / `#3730a3` | Cold Chain & IoT Temperature Telemetry |
+| `sky` | `.ui-badge-sky` | `#f0f9ff` / `#0369a1` | Water Rights & Irrigation Verification |
+
+## ✨ Micro-Interactions & Text Selection
+- **Text Selection:** Custom brand highlight using pale emerald background (`#bbf7d0`) and high-contrast text (`#142a1d`).
+- **Badge Hover Elevation:** Badges elevate slightly (`translateY(-1px)`) with subtle shadow drop and accessible focus rings.
+
 
