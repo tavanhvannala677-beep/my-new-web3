@@ -160,6 +160,40 @@ export function rgbToHex(r: number, g: number, b: number): string {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 }
 
+/**
+ * Adjusts the brightness of a hex color by a percentage (-100 to +100).
+ * Positive percentages lighten the color, negative percentages darken it.
+ * Clamps output RGB components to [0, 255].
+ * e.g., adjustBrightness("#10b981", 20) => lightened emerald
+ */
+export function adjustBrightness(hexColor: string, percent: number): string {
+  if (!hexColor || typeof hexColor !== "string") return "#000000";
+  const hex = hexColor.replace("#", "").trim();
+  if (hex.length !== 3 && hex.length !== 6) return "#000000";
+
+  let r: number, g: number, b: number;
+  if (hex.length === 3) {
+    r = parseInt(hex[0] + hex[0], 16);
+    g = parseInt(hex[1] + hex[1], 16);
+    b = parseInt(hex[2] + hex[2], 16);
+  } else {
+    r = parseInt(hex.substring(0, 2), 16);
+    g = parseInt(hex.substring(2, 4), 16);
+    b = parseInt(hex.substring(4, 6), 16);
+  }
+
+  const factor = isNaN(percent) ? 0 : percent / 100;
+  const adjust = (c: number) => {
+    const target = factor > 0 ? 255 : 0;
+    const diff = target - c;
+    return Math.max(0, Math.min(255, Math.round(c + diff * Math.abs(factor))));
+  };
+
+  const toHex = (v: number) => v.toString(16).padStart(2, "0");
+  return `#${toHex(adjust(r))}${toHex(adjust(g))}${toHex(adjust(b))}`;
+}
+
+
 
 
 
