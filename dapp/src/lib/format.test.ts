@@ -15,7 +15,8 @@ import {
   hexToHsl,
   hslToRgb,
   getContrastingTextColor,
-  hexToRgbValues
+  hexToRgbValues,
+  blendColors
 } from "./format";
 
 describe("isUint", () => {
@@ -255,6 +256,23 @@ describe("hexToRgbValues", () => {
     expect(hexToRgbValues("")).toEqual([0, 0, 0]);
   });
 });
+
+describe("blendColors", () => {
+  it("blends two colors at 50% default weight", () => {
+    expect(blendColors("#000000", "#ffffff")).toBe("#808080");
+  });
+
+  it("handles 0% and 100% weights correctly", () => {
+    expect(blendColors("#000000", "#ffffff", 0)).toBe("#000000");
+    expect(blendColors("#000000", "#ffffff", 1)).toBe("#ffffff");
+  });
+
+  it("clamps weight to [0, 1] range", () => {
+    expect(blendColors("#000000", "#ffffff", -0.5)).toBe("#000000");
+    expect(blendColors("#000000", "#ffffff", 1.5)).toBe("#ffffff");
+  });
+});
+
 
 
 
