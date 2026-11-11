@@ -290,6 +290,32 @@ export function getContrastingTextColor(hexColor: string): "#ffffff" | "#000000"
   return isDarkColor(hexColor) ? "#ffffff" : "#000000";
 }
 
+/**
+ * Extracts raw [red, green, blue] tuple components (0-255) from a hex color string.
+ * Supports both 3-character and 6-character hex formats. Returns [0, 0, 0] on invalid input.
+ * e.g., hexToRgbValues("#ffffff") => [255, 255, 255]
+ */
+export function hexToRgbValues(hexColor: string): [number, number, number] {
+  if (!hexColor || typeof hexColor !== "string") return [0, 0, 0];
+  const hex = hexColor.replace("#", "").trim();
+  if (hex.length !== 3 && hex.length !== 6) return [0, 0, 0];
+
+  if (hex.length === 3) {
+    return [
+      parseInt(hex[0] + hex[0], 16),
+      parseInt(hex[1] + hex[1], 16),
+      parseInt(hex[2] + hex[2], 16)
+    ];
+  }
+
+  return [
+    parseInt(hex.substring(0, 2), 16),
+    parseInt(hex.substring(2, 4), 16),
+    parseInt(hex.substring(4, 6), 16)
+  ];
+}
+
+
 
 
 
