@@ -13,7 +13,8 @@ import {
   rgbToHex,
   adjustBrightness,
   hexToHsl,
-  hslToRgb
+  hslToRgb,
+  getContrastingTextColor
 } from "./format";
 
 describe("isUint", () => {
@@ -223,6 +224,19 @@ describe("hslToRgb", () => {
     expect(hslToRgb(NaN, NaN, NaN)).toBe("#000000");
   });
 });
+
+describe("getContrastingTextColor", () => {
+  it("returns white text for dark background colors", () => {
+    expect(getContrastingTextColor("#000000")).toBe("#ffffff");
+    expect(getContrastingTextColor("#153826")).toBe("#ffffff");
+  });
+
+  it("returns black text for light background colors", () => {
+    expect(getContrastingTextColor("#ffffff")).toBe("#000000");
+    expect(getContrastingTextColor("#edf2e7")).toBe("#000000");
+  });
+});
+
 
 
 
