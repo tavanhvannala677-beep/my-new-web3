@@ -246,6 +246,43 @@ export function hexToHsl(hexColor: string): { h: number; s: number; l: number } 
   };
 }
 
+/**
+ * Converts HSL components (h: 0-360, s: 0-100, l: 0-100) into a standard 6-character hex string (#rrggbb).
+ * e.g., hslToRgb(0, 0, 100) => "#ffffff"
+ */
+export function hslToRgb(h: number, s: number, l: number): string {
+  const safeH = (((isNaN(h) ? 0 : h) % 360) + 360) % 360;
+  const safeS = Math.max(0, Math.min(100, isNaN(s) ? 0 : s)) / 100;
+  const safeL = Math.max(0, Math.min(100, isNaN(l) ? 0 : l)) / 100;
+
+  const c = (1 - Math.abs(2 * safeL - 1)) * safeS;
+  const x = c * (1 - Math.abs(((safeH / 60) % 2) - 1));
+  const m = safeL - c / 2;
+
+  let rPrime = 0, gPrime = 0, bPrime = 0;
+  if (safeH < 60) {
+    rPrime = c; gPrime = x; bPrime = 0;
+  } else if (safeH < 120) {
+    rPrime = x; gPrime = c; bPrime = 0;
+  } else if (safeH < 180) {
+    rPrime = 0; gPrime = c; bPrime = x;
+  } else if (safeH < 240) {
+    rPrime = 0; gPrime = x; bPrime = c;
+  } else if (safeH < 300) {
+    rPrime = x; gPrime = 0; bPrime = c;
+  } else {
+    rPrime = c; gPrime = 0; bPrime = x;
+  }
+
+  const toHex = (val: number) =>
+    Math.max(0, Math.min(255, Math.round((val + m) * 255)))
+      .toString(16)
+      .padStart(2, "0");
+
+  return `#${toHex(rPrime)}${toHex(gPrime)}${toHex(bPrime)}`;
+}
+
+
 
 
 
