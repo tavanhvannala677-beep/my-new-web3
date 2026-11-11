@@ -2,6 +2,16 @@
 
 All notable changes to the **LaoTrace** platform are documented in this file.
 
+## [1.7.0] - 2026-11-11
+### Added
+- Teal and Amber badge color variants for agroforestry and phytosanitary in `styles.css`.
+- Support for `teal` and `amber` variants in the `Badge` component.
+- Subtle organic scrollbar styling matched to the sage design palette.
+- Live status ping pulse animation (`.status-pulse-emerald`) for real-time telemetry.
+- HSL-to-RGB color converter (`hslToRgb`) with unit test coverage in `lib/format.ts`.
+- WCAG compliant contrasting text color utility (`getContrastingTextColor`) with unit tests in `lib/format.ts`.
+- Updated compliance badge specifications and contrast guidelines in `docs/THEME.md`.
+
 ## [1.6.0] - 2026-11-10
 ### Added
 - Indigo and Sky compliance badge variants for cold chain and irrigation in `styles.css`.
