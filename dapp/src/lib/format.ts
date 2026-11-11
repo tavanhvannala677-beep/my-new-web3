@@ -282,6 +282,15 @@ export function hslToRgb(h: number, s: number, l: number): string {
   return `#${toHex(rPrime)}${toHex(gPrime)}${toHex(bPrime)}`;
 }
 
+/**
+ * Determines whether white (#ffffff) or black (#000000) text achieves optimal contrast
+ * on top of a given background hex color, ensuring WCAG accessibility compliance.
+ */
+export function getContrastingTextColor(hexColor: string): "#ffffff" | "#000000" {
+  return isDarkColor(hexColor) ? "#ffffff" : "#000000";
+}
+
+
 
 
 
