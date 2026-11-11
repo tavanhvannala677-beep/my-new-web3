@@ -36,12 +36,17 @@ For rural farmers operating mobile devices under direct outdoor sunlight, the pl
 | `sky` | `.ui-badge-sky` | `#f0f9ff` / `#0369a1` | Water Rights & Irrigation Verification |
 | `teal` | `.ui-badge-teal` | `#f0fdfa` / `#0f766e` | Agroforestry & Biodiversity Certification |
 | `amber` | `.ui-badge-amber` | `#fffbeb` / `#b45309` | Phytosanitary & Quarantine Hold |
+| `slate` | `.ui-badge-slate` | `#f8fafc` / `#334155` | Archived Records & Historical Snapshots |
+| `lime` | `.ui-badge-lime` | `#f7fee7` / `#4d7c0f` | Nursery Seedling & Soil Germination |
 
 ## ✨ Micro-Interactions & Text Selection
 - **Text Selection:** Custom brand highlight using pale emerald background (`#bbf7d0`) and high-contrast text (`#142a1d`).
 - **Badge Hover Elevation:** Badges elevate slightly (`translateY(-1px)`) with subtle shadow drop and accessible focus rings.
+- **Card Hover Lift:** Interactive container elevation (`translateY(-2px)`) with organic green shadow projection.
 - **Scrollbar Styling:** Integrated with organic sage palette track and border-subtle thumb.
 - **Dynamic Text Contrast:** Automated WCAG calculation choosing `#ffffff` vs `#000000` via relative luminance formula.
+- **Linear Color Blending:** Algorithmic color transition utility (`blendColors`) for status gradients and heatmaps.
+
 
 
 
