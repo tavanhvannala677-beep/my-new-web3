@@ -2,6 +2,16 @@
 
 All notable changes to the **LaoTrace** platform are documented in this file.
 
+## [1.8.0] - 2026-11-12
+### Added
+- Slate and Lime badge color variants for archived records and nursery seedlings in `styles.css`.
+- Support for `slate` and `lime` variants in the `Badge` component.
+- Interactive card elevation hover lift with subtle shadow projection.
+- Micro-interaction button hover elevation and press scaling.
+- Raw RGB tuple extractor helper (`hexToRgbValues`) with unit tests in `lib/format.ts`.
+- Linear color blending utility (`blendColors`) with unit tests in `lib/format.ts`.
+- Updated compliance badge specifications and micro-interactions in `docs/THEME.md`.
+
 ## [1.7.0] - 2026-11-11
 ### Added
 - Teal and Amber badge color variants for agroforestry and phytosanitary in `styles.css`.
