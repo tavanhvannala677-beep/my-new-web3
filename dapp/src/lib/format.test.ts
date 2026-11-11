@@ -14,7 +14,8 @@ import {
   adjustBrightness,
   hexToHsl,
   hslToRgb,
-  getContrastingTextColor
+  getContrastingTextColor,
+  hexToRgbValues
 } from "./format";
 
 describe("isUint", () => {
@@ -236,6 +237,25 @@ describe("getContrastingTextColor", () => {
     expect(getContrastingTextColor("#edf2e7")).toBe("#000000");
   });
 });
+
+describe("hexToRgbValues", () => {
+  it("converts 6-digit hex into [r, g, b] number tuple", () => {
+    expect(hexToRgbValues("#ffffff")).toEqual([255, 255, 255]);
+    expect(hexToRgbValues("#000000")).toEqual([0, 0, 0]);
+    expect(hexToRgbValues("#153826")).toEqual([21, 56, 38]);
+  });
+
+  it("converts 3-digit hex into [r, g, b] number tuple", () => {
+    expect(hexToRgbValues("#fff")).toEqual([255, 255, 255]);
+    expect(hexToRgbValues("#000")).toEqual([0, 0, 0]);
+  });
+
+  it("handles invalid hex input gracefully", () => {
+    expect(hexToRgbValues("invalid")).toEqual([0, 0, 0]);
+    expect(hexToRgbValues("")).toEqual([0, 0, 0]);
+  });
+});
+
 
 
 
