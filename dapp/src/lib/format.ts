@@ -315,6 +315,24 @@ export function hexToRgbValues(hexColor: string): [number, number, number] {
   ];
 }
 
+/**
+ * Linearly interpolates (blends) between two hex colors.
+ * - weight: 0.0 to 1.0 (0.0 returns color1, 1.0 returns color2, default is 0.5)
+ * e.g., blendColors("#000000", "#ffffff", 0.5) => "#808080"
+ */
+export function blendColors(hexColor1: string, hexColor2: string, weight: number = 0.5): string {
+  const [r1, g1, b1] = hexToRgbValues(hexColor1);
+  const [r2, g2, b2] = hexToRgbValues(hexColor2);
+
+  const safeWeight = Math.max(0, Math.min(1, isNaN(weight) ? 0.5 : weight));
+  const r = Math.round(r1 + (r2 - r1) * safeWeight);
+  const g = Math.round(g1 + (g2 - g1) * safeWeight);
+  const b = Math.round(b1 + (b2 - b1) * safeWeight);
+
+  return rgbToHex(r, g, b);
+}
+
+
 
 
 
