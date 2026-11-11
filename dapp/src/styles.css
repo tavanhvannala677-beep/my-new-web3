@@ -137,8 +137,9 @@ button:active:not(:disabled) {
 }
 
 .card:hover {
+  transform: translateY(-2px);
   border-color: var(--border-strong);
-  box-shadow: 0 4px 16px rgba(20, 42, 29, 0.08);
+  box-shadow: 0 6px 20px rgba(20, 42, 29, 0.1);
 }
 
 /* UI Badge and CopyButton Components */
