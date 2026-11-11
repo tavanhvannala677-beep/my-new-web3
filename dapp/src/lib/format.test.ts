@@ -12,7 +12,8 @@ import {
   hexToRgba,
   rgbToHex,
   adjustBrightness,
-  hexToHsl
+  hexToHsl,
+  hslToRgb
 } from "./format";
 
 describe("isUint", () => {
@@ -204,6 +205,25 @@ describe("hexToHsl", () => {
     expect(hexToHsl("invalid")).toEqual({ h: 0, s: 0, l: 0 });
   });
 });
+
+describe("hslToRgb", () => {
+  it("converts pure white and black correctly", () => {
+    expect(hslToRgb(0, 0, 100)).toBe("#ffffff");
+    expect(hslToRgb(0, 0, 0)).toBe("#000000");
+  });
+
+  it("converts pure primary hues (red, green, blue)", () => {
+    expect(hslToRgb(0, 100, 50)).toBe("#ff0000");
+    expect(hslToRgb(120, 100, 50)).toBe("#00ff00");
+    expect(hslToRgb(240, 100, 50)).toBe("#0000ff");
+  });
+
+  it("handles out of bound degrees and NaN", () => {
+    expect(hslToRgb(360, 100, 50)).toBe("#ff0000");
+    expect(hslToRgb(NaN, NaN, NaN)).toBe("#000000");
+  });
+});
+
 
 
 
